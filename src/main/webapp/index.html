@@ -1,0 +1,27 @@
+<html>
+    <head>
+
+        <script src="js/lib/jquery.min.js"></script>
+        <script>
+            $.ajax({
+                url: window.location.origin + window.location.pathname + "rest/api/insert",
+                dataType: 'application/json',
+                data: {name: 'Cicciobello'},
+                method: 'POST',
+                success: function (response) {
+                    console.log("ok post")
+                }, error: function (r) {
+                    console.log("error post")
+                }
+            })
+            $.get(window.location.origin + window.location.pathname + "rest/api/get", function (data) {
+                document.body.innerHTML = data.name;
+            });
+        </script>
+    </head>
+    <body>
+
+
+        <h2>Hello Worl!</h2>
+    </body>
+</html>
