@@ -39,13 +39,11 @@ public class ApiClient {
     @Path("/insert")
     public void insert(@FormParam("name") String name) throws SQLException, NamingException {
         System.out.println("passed" + name);
-        DatabaseManager.insertCompany(name);
     }
     @GET
     @Path("/get")
     public Map<String, Object> get() throws SQLException, NamingException {
         Map<String, Object> a = new HashMap<>();
-        a.put("name", DatabaseManager.findCompany());
         return a;
     }
 

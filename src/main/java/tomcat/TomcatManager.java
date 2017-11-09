@@ -5,14 +5,15 @@
  */
 package tomcat;
 
+import database.DatabaseManager;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.core.StandardContext;
-import org.apache.catalina.deploy.ApplicationParameter;
 import org.apache.catalina.startup.Tomcat;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -25,7 +26,9 @@ public class TomcatManager {
 
     private Tomcat instance;
 
-    public void start(final int port) throws ServletException, LifecycleException, MalformedURLException {
+    public static String ATTRIBUTE_DATABASE_MANAGER = "DatabaseManager";
+
+    public void start(final int port, final DatabaseManager databaseManager) throws ServletException, LifecycleException, MalformedURLException {
         String webappDirLocation = "src/main/webapp/";
         instance = new Tomcat();
 
@@ -34,10 +37,10 @@ public class TomcatManager {
         StandardContext ctx = (StandardContext) instance.addWebapp("/embedded", new File(webappDirLocation).getAbsolutePath());
         Tomcat.addServlet(ctx, "jersey-container-servlet", new ServletContainer(new ResourceConfig(new ApplicationConfig().getClasses())));
         ctx.addServletMapping("/rest/*", "jersey-container-servlet");
-        ApplicationParameter p = new ApplicationParameter();
-        p.setName("ciao");
-        p.setValue("");
-        ctx.addApplicationParameter(p);
+        ctx.addApplicationListener(Initializer.class.getName());
+        ServletContext servletContext = ctx.getServletContext();
+        servletContext.setAttribute(ATTRIBUTE_DATABASE_MANAGER, databaseManager);
+        
 
         instance.start();
         instance.getServer().await();
