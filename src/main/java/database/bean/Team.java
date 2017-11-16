@@ -21,7 +21,8 @@ public class Team extends Entity {
     private String name;
     private int league;
     private boolean ofuser;
-    private String strength;
+    private int defence;
+    private int attack;
 
     public Team() {
     }
@@ -30,7 +31,8 @@ public class Team extends Entity {
         Team team = new Team();
         team.setLeague(t.getLeague().getId());
         team.setName(t.getName());
-        team.setStrength("1");
+        team.setDefence(t.getDefence());
+        team.setAttack(t.getAttack());
         return team;
     }
 
@@ -41,7 +43,8 @@ public class Team extends Entity {
         this.name = rs.getString(i++);
         this.league = rs.getInt(i++);
         this.ofuser = rs.getInt(i++) != 0;
-        this.strength = rs.getString(i++);
+        this.defence = rs.getInt(i++);
+        this.attack = rs.getInt(i++);
         return this;
     }
 
@@ -77,13 +80,23 @@ public class Team extends Entity {
         this.ofuser = ofuser;
     }
 
-    public String getStrength() {
-        return strength;
+    public int getDefence() {
+        return defence;
     }
 
-    public void setStrength(String strength) {
-        this.strength = strength;
+    public void setDefence(int defence) {
+        this.defence = defence;
     }
+
+    public int getAttack() {
+        return attack;
+    }
+
+    public void setAttack(int attack) {
+        this.attack = attack;
+    }
+
+   
 
     public static QueryBuilder<Team> builder = new QueryBuilder<Team>() {
 
@@ -93,7 +106,8 @@ public class Team extends Entity {
             ps.setString(i++, bean.name);
             ps.setInt(i++, bean.league);
             ps.setInt(i++, bean.ofuser ? 1 : 0);
-            ps.setString(i++, bean.strength);
+            ps.setInt(i++, bean.defence);
+            ps.setInt(i++, bean.attack);
             return i;
         }
 
@@ -104,17 +118,17 @@ public class Team extends Entity {
 
         @Override
         public String SELECT_HEADER() {
-            return "idteam,name,league,ofuser,strength";
+            return "idteam,name,league,ofuser,defence,attack";
         }
 
         @Override
         public String UPDATE() {
-            return "name=?,league=?,ofuser=?,strength=?";
+            return "name=?,league=?,ofuser=?,defence=?,attack=?";
         }
 
         @Override
         public String INSERT_COUNT_ELEMENTS() {
-            return "name,league,ofuser,strength";
+            return "name,league,ofuser,defence,attack";
         }
 
         @Override
@@ -124,7 +138,8 @@ public class Team extends Entity {
                 + "name text not null,"
                 + "league int not null,"
                 + "ofuser int not null,"
-                + "strength text not null)";
+                + "defence int not null,"
+                + "attack int not null)";
 
         }
 

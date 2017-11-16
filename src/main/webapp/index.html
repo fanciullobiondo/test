@@ -1,27 +1,390 @@
 <html>
     <head>
+        <title>Gioco</title>
+        <link rel="stylesheet" type="text/css" href="normalize.css">
+        <link rel="stylesheet" type="text/css" href="skeleton.css">
+        <link rel="stylesheet" type="text/css" href="skeleton-tabs.css">
+
+        <style>
+            body {
+                padding: 2% 4% 2% 4%;
+            }
+            input.input-result {
+                height: 23px;
+                max-width: 50px;
+            }
+            input.ng-invalid {
+                color:red;
+            }
+            label.error {
+                color: red;
+            }
+            div.leaguetable {
+                border: 1px solid #000;
+            }
+            span.userteam {
+                color: #0FA0CE;
+            }
+            input[readonly] {
+                background-color:#cccccc;
+            }
+
+            .heading-font-size {
+                font-size: 1.8rem;
+                color: #999;
+                letter-spacing: normal; }
+
+
+        </style>
 
         <script src="js/lib/jquery.min.js"></script>
-        <script>
-            $.ajax({
-                url: window.location.origin + window.location.pathname + "rest/api/insert",
-                dataType: 'application/json',
-                data: {name: 'Cicciobello'},
-                method: 'POST',
-                success: function (response) {
-                    console.log("ok post")
-                }, error: function (r) {
-                    console.log("error post")
-                }
-            })
-            $.get(window.location.origin + window.location.pathname + "rest/api/get", function (data) {
-                document.body.innerHTML = data.name;
-            });
-        </script>
+        <script src="skeleton-tabs.js"></script>
+        <script type="text/javascript" src="js/lib/angular.min.js"></script>
+        <script type="text/javascript" src="js/lib/index.js"></script>
     </head>
-    <body>
+    <body ng-app="app" ng-controller="MainCtrl" >
+        <div class="row">
+            <div class="six columns">
+                <div>                <h4>Giornata {{actualRound}} <span class="heading-font-size"> Champions League</span></h4>
+
+                </div>
+
+            </div>
+            <div class="one columns">&nbsp;</div>
+            <div class="five columns">
+                <button><</button>&nbsp;<button>></button>&nbsp;<button ng-click="navLabelClick()">{{navLabel}}</button>
+            </div>
+        </div>
+
+        <div ng-show="situation === 'start'"  id="start" >
+            <table class="u-full-width">
+                <thead>
+                    <tr>
+                        <th>Database name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Dave Gamache</td>
+                    </tr>
+                    <tr>
+                        <td>Dwayne Johnson</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div ng-show="situation === 'teamchooser'"  id="teamchooser"  >
+            <form>
+                <label ng-show="teamchooserError !== ''" class="error">{{teamchooserError}}</label>
+                <div class="row">
+                    <div class="four columns">
+                        <label for="nteams">Numero umani / 8</label>
+                        <input class="u-full-width" id="nteams" type="number" min="1" max="8" ng-model="humans">
+                    </div>
+                </div>
+                <div class="row" ng-repeat="i in getNumber(humans) track by $index">
+                    <div class="six columns">
+                        <label for="exampleRecipientInput">Squadra {{index}}</label>
+                        <select class="u-full-width choose-team" >
+                            <option value="{{name}}" ng-repeat="name in teamchooserTeams">{{name}}</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div ng-show="situation === 'main'"  id="main"  >
+            <form> 
+                <div class="container">
+                    <div ng-if="actualMatches.played" class="row "  ng-repeat="m in actualMatches.matches">
+
+                        <div class="one columns">&nbsp;</div>
+                        <div class="one columns">50$</div>
+                        <div class="one columns">&nbsp;</div>
+                        <div class="six columns">
+                            <div class="row ">
+                                <div class="three columns"><span >{{m.home.name}}</span ></div>
+                                <div class="two columns">{{m.home.goal}}</div>
+                                <div class="two columns">:</div>
+                                <div class="two columns">{{m.away.goal}}</div>
+                                <div class="three columns"><span>{{m.away.name}}</span></div>
+                            </div></div>
+                        <div class="one columns">&nbsp;</div>
+                        <div class="one columns">50$</div>
+                        <div class="one columns">&nbsp;</div>
+
+                    </div>
+                    <div ng-if="!actualMatches.played" class="row matches_{{m.idmatch}} " ng-repeat="m in actualMatches.matches">
+                        <div class="three columns">&nbsp;</div>
+                        <div class="six columns">
+                            <div class="row ">
+                                <div class="three columns"><span ng-class="{userteam: m.home.ofUser}" >{{m.home.name}}</span></div>
+                                <div class="six columns">
+                                    <div class="row ">
+                                        <div class="five columns"> <input ng-readonly="!m.editable" type="number" min="0" class="input-result " ng-model="m.home.goal"></div>
+                                        <div class="two columns">:</div>
+                                        <div class="five columns"> <input ng-readonly="!m.editable" type="number" min="0" class="input-result " ng-model="m.away.goal"></div>
+                                    </div>
+                                </div>
+                                <div class="three columns"><span ng-class="{userteam: m.away.ofUser}" >{{m.away.name}}</span></div>
+                            </div></div>
+
+                        <div class="three columns">&nbsp;</div>
 
 
-        <h2>Hello Worl!</h2>
+                    </div>
+                </div>
+                <hr>
+
+                <ul class="tab-nav">
+                    <li>
+                        <a class="button active" href="#one">Campionato</a>
+                    </li>
+                    <li>
+                        <a class="button" href="#two">Tab 2</a>
+                    </li>
+                    <li>
+                        <a class="button" href="#three">Tab 3</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane" id="one" active>
+                        <table class="u-full-width">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>G</th>
+                                    <th>V</th>
+                                    <th>P</th>
+                                    <th>GG</th>
+                                    <th>GS</th>
+                                    <th>DR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="leaguerow{{s.idteam}}" ng-repeat=" s in campionatotable">
+                                    <td>{{s.teamName}}</td>
+                                    <td>{{s.point}}</td>
+                                    <td>1</td>
+                                    <td>1</td>
+                                    <td>1</td>
+                                    <td>1</td>
+                                    <td>1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane " id="two">
+                        <div class="row">
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="one columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="two columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="one columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row">
+
+                            <div class="two columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="four columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="two columns">&nbsp;</div>
+                        </div>
+                        <br>
+                        <div class="row">
+
+                            <div class="five columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="five columns">&nbsp;</div>
+                        </div>
+                        <br>
+                        <div class="row">
+
+                            <div class="two columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="four columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="two columns">&nbsp;</div>
+                        </div>
+                        <br>
+                        <div class="row">
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="one columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="two columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                            <div class="one columns">&nbsp;</div>
+                            <div class="two columns leaguetable">
+                                <div class="row">
+                                    <div class="six columns">Squadra1</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">5</div>
+                                </div>
+                                <div class="row">
+                                    <div class="six columns">Squadra2</div>
+                                    <div class="three columns">&nbsp;</div>
+                                    <div class="three columns">1</div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+
+                    <div class="tab-pane" id="three">Lancia dado</div>
+                </div>
+
+
+
+
+            </form>
+        </div>
     </body>
 </html>

@@ -6,7 +6,8 @@
 package data;
 
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -14,17 +15,40 @@ import java.util.List;
  */
 public class EmbeddedData {
 
-    public static List<Team> ALL_TEAMS = Arrays.asList(
-        new Team("a", League.campionato()));
+    public final static Map<String, Team> ALL_TEAMS = new HashMap<>();
+
+    static {
+        ALL_TEAMS.put("Primo", new Team("Primo", League.campionato(), 2, 4));
+        ALL_TEAMS.put("Secondo", new Team("Secondo", League.campionato(), 2, 4));
+        ALL_TEAMS.put("Terzo", new Team("Terzo", League.campionato(), 2, 4));
+        ALL_TEAMS.put("qu", new Team("qu", League.campionato(), 2, 4));
+        ALL_TEAMS.put("ci", new Team("ci", League.campionato(), 2, 4));
+        ALL_TEAMS.put("sei", new Team("sei", League.campionato(), 2, 4));
+        ALL_TEAMS.put("sett", new Team("sett", League.campionato(), 2, 4));
+        ALL_TEAMS.put("ott", new Team("ott", League.campionato(), 2, 4));
+        ALL_TEAMS.put("DICIIO", new Team("ott", League.campionato(), 2, 4));
+    }
 
     public static class Team {
 
         private final String name;
         private final League league;
+        private final int defence;
+        private final int attack;
 
-        public Team(String name, League league) {
+        public Team(String name, League league, int defence, int attack) {
             this.name = name;
             this.league = league;
+            this.defence = defence;
+            this.attack = attack;
+        }
+
+        public int getDefence() {
+            return defence;
+        }
+
+        public int getAttack() {
+            return attack;
         }
 
         public String getName() {

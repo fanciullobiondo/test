@@ -5,6 +5,7 @@
  */
 package database.bean;
 
+import client.ApiClient;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,6 +22,16 @@ public class Match extends Entity {
     private int goalHome;
     private int goalAway;
     private int idRound;
+
+
+    public Match() {
+        
+    }
+    public Match(ApiClient.RoundMatch rm) {
+        this.idmatch = rm.getIdmatch();
+        this.goalHome = rm.getHome().getGoal();
+        this.goalAway = rm.getAway().getGoal();
+    }
 
     @Override
     public Match fromResultSet(ResultSet rs) throws SQLException {

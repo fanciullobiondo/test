@@ -14,12 +14,6 @@ public class Initializer implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         System.out.println("init");
-//        try {
-//            System.out.println(((DatabaseManager) sce.getServletContext().getAttribute(TomcatManager.ATTRIBUTE_DATABASE_MANAGER)));
-//        } catch (SQLException ex) {
-//            Logger.getLogger(Initializer.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-        
     }
 
     @Override

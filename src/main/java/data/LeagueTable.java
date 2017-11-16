@@ -37,9 +37,35 @@ public class LeagueTable {
             this.idteam = idteam;
             this.point = point;
         }
+        private String teamName;
+        private int idteam;
+        private int point;
 
-        int idteam;
-        int point;
+        public String getTeamName() {
+            return teamName;
+        }
+
+        public void setTeamName(String teamName) {
+            this.teamName = teamName;
+        }
+
+        public int getIdteam() {
+            return idteam;
+        }
+
+        public void setIdteam(int idteam) {
+            this.idteam = idteam;
+        }
+
+        public int getPoint() {
+            return point;
+        }
+
+        public void setPoint(int point) {
+            this.point = point;
+        }
+
+        
 
         @Override
         public String toString() {
