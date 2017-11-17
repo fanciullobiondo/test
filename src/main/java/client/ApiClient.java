@@ -2,6 +2,7 @@ package client;
 
 import data.EmbeddedData;
 import data.EmbeddedData.League;
+import data.LeagueTable;
 import database.bean.Match;
 import engine.Engine;
 import java.sql.SQLException;
@@ -34,6 +35,18 @@ public class ApiClient {
     @Context
     private HttpServletRequest servletRequest;
 
+    private Map<Integer, LeagueTable> leagueCache  = new HashMap<>();
+
+    private LeagueTable getLeagueTable(int idround) throws SQLException {
+        LeagueTable get = leagueCache.get(idround);
+        if (get == null) {
+            get = getManager().calculateLeagueTable(idround, League.CAMPIONATO);
+            leagueCache.put(idround, get);
+        }
+        return get;
+        
+    }
+
     private Engine getManager() {
         return (Engine) servletRequest.getServletContext().getAttribute(TomcatManager.ATTRIBUTE_ENGINE);
     }
@@ -58,7 +71,7 @@ public class ApiClient {
         List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
         Map<String, Object> simpleResult = simpleResult(roundMatches);
         simpleResult.put("played", getManager().isRoundPlayed(idround));
-        simpleResult.put("table", getManager().calculateLeagueTable(idround, League.CAMPIONATO));
+        simpleResult.put("table", getLeagueTable(idround));
         return simpleResult;
     }
 

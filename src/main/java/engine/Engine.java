@@ -15,14 +15,13 @@ import database.bean.QueryBuilder.WhereClause;
 import database.bean.Round;
 import database.bean.Season;
 import database.bean.Team;
+import engine.SeasonCalculator.SingleMatch;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -31,10 +30,7 @@ import java.util.stream.Collectors;
 public class Engine {
 
     private final DatabaseManager manager;
-    private List<Team> teams;
-    private List<Integer> nextMatchHome = new ArrayList<>();
-    private List<Integer> nextMatchAway = new ArrayList<>();
-    private final List<SingleMatch> matches = new LinkedList<>();
+
 
     public static final int CAMPIONATO_N_TEAMS = 8;
 
@@ -187,28 +183,15 @@ public class Engine {
     }
 
     public int newSeason() throws SQLException {
-        // faccio tutte le competizioni una alla volta
-        // calcolo tutti i round in memoria per ogni competizione
-        // ho nella table team le squadre
         Season season = new Season();
         season.setSequence(1);
         int idSeason = manager.insertEntity(season);
 
-        this.teams = manager.queryEntity(Team.class, null);
-        System.out.println("tms" + this.teams);
+        SeasonCalculator seasonCalculator = new SeasonCalculator(manager.queryEntity(Team.class, null));
 
-        List<Integer> tsids = new ArrayList<>(teams.stream().map(Team::getIdteam).collect(Collectors.toList()));
-        Collections.shuffle(tsids);
-        int rounds = tsids.size() - 1;
-        for (int i = 0; i < rounds; i++) {
-            calculateRound(tsids, i == rounds - 1, i);
-        }
+        
+        Map<Integer, List<SeasonCalculator.SingleMatch>> calculatedRound = seasonCalculator.run();
 
-        System.out.println("match" + matches);
-
-        Map<Integer, List<SingleMatch>> calculatedRound = matches.stream().collect(Collectors.groupingBy(SingleMatch::getRound));
-
-        System.out.println(calculatedRound);
         int nextRound = 0;
         for (Map.Entry<Integer, List<SingleMatch>> entry : calculatedRound.entrySet()) {
             Round r = new Round();
@@ -231,89 +214,6 @@ public class Engine {
         return nextRound;
     }
 
-    private void calculateRound(List<Integer> tsids, boolean last, int actualRound) {
-        if (matches.isEmpty()) {
-            nextMatchAway = new ArrayList<>(tsids.subList(0, CAMPIONATO_N_TEAMS / 2));
-            nextMatchHome = new ArrayList<>(tsids.subList(CAMPIONATO_N_TEAMS / 2, CAMPIONATO_N_TEAMS));
-        }
-        List<Integer> _nextHome = new ArrayList<>();
-        List<Integer> _nextAway = new ArrayList<>();
-        List<Integer> matched = new ArrayList<>();
-        List<Integer> all = new ArrayList<>(nextMatchAway);
-        if (last) {
-            all.addAll(nextMatchHome);
-        }
-        for (Integer home : last ? all : nextMatchHome) {
-            if (matched.contains(home)) {
-                continue;
-            }
-            boolean found = false;
-
-            for (Integer away : last ? all : nextMatchAway) {
-                if (matched.contains(away) || away == home) {
-                    continue;
-                }
-                if (!alreadyPlayed(home, away)) {
-                    found = true;
-                    addMatch(home, away, actualRound);
-                    matched.add(home);
-                    matched.add(away);
-                    _nextAway.add(home);
-                    _nextHome.add(away);
-                    break;
-                }
-            }
-            if (!found && !last) {
-                break;
-            }
-        }
-
-        nextMatchAway = _nextAway;
-        nextMatchHome = _nextHome;
-
-    }
-
-    private void addMatch(Integer a, Integer b, int actualRound) {
-        matches.add(new SingleMatch(a, b, actualRound));
-    }
-
-    private boolean alreadyPlayed(Integer a, Integer b) {
-        return matches.stream().anyMatch(m -> new SingleMatch(a, b, -1).equals(m));
-    }
-
-    private class SingleMatch {
-
-        @Override
-        public String toString() {
-            return "SingleMatch{" + "a=" + homeTeam + ", b=" + awayTeam + '}';
-        }
-
-        int homeTeam;
-        int awayTeam;
-        int round;
-
-        public int getRound() {
-            return round;
-        }
-
-        public SingleMatch(int a, int b, int round) {
-            this.homeTeam = a;
-            this.awayTeam = b;
-            this.round = round;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            final SingleMatch other = (SingleMatch) obj;
-            return (this.homeTeam == other.homeTeam && this.awayTeam == other.awayTeam) || this.homeTeam == other.awayTeam && this.awayTeam == other.homeTeam;
-        }
-
-    }
+  
 
 }

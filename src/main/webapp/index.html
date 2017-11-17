@@ -148,28 +148,32 @@
                     </li>
                 </ul>
                 <div class="tab-content">
-                    <div class="tab-pane" id="one" active>
+                    <div class="tab-pane container" id="one" active>
                         <table class="u-full-width">
                             <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>G</th>
                                     <th>V</th>
+                                    <th>N</th>
                                     <th>P</th>
-                                    <th>GG</th>
+                                    <th>GF</th>
                                     <th>GS</th>
                                     <th>DR</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="leaguerow{{s.idteam}}" ng-repeat=" s in campionatotable">
                                     <td>{{s.teamName}}</td>
+                                    <td>{{s.played}}</td>
+                                    <td>{{s.win}}</td>
+                                    <td>{{s.draw}}</td>
+                                    <td>{{s.lose}}</td>
+                                    <td>{{s.gf}}</td>
+                                    <td>{{s.gs}}</td>
+                                    <td>{{s.dg}}</td>
                                     <td>{{s.point}}</td>
-                                    <td>1</td>
-                                    <td>1</td>
-                                    <td>1</td>
-                                    <td>1</td>
-                                    <td>1</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -127,26 +127,40 @@ public class DatabaseManager {
 
     public LeagueTable calculateLeagueTable(int idseason, int idleague) throws SQLException {
         LeagueTable table = new LeagueTable();
-        String queryHomeGoal = "select (SUM(case when goalhome > goalaway THEN 3 when goalhome=goalaway then 1 else 0 End )) "
-            + "as point from " + Match.builder.TABLE() + " where idround in(select idround from round where idseason=? and league=? and played=1) and idteamhome=? ";
+        String queryHomeGoal = "select "
+            + "(SUM(case when goalhome > goalaway THEN 1 ELSE 0 END)) as win, "
+            + "(SUM(case when goalhome = goalaway THEN 1 ELSE 0 END)) as draw, "
+            + "(SUM(case when goalhome < goalaway THEN 1 ELSE 0 END)) as lose, "
+            + "SUM(goalhome) as gf, "
+            + "SUM(goalaway) as gs "
+            + " from " + Match.builder.TABLE()
+            + " where idround in(select idround "
+            + "from round "
+            + "where idseason=? and league=? and played=1) and idteamhome=? ";
 
-        String queryAwayGoal = "select (SUM(case when goalhome > goalaway THEN 0 when goalhome=goalaway then 1 else 3 End )) "
-            + "as point from " + Match.builder.TABLE() + " where idround in( select idround from round where idseason=? and league=? and played=1) and idteamaway=?";
+        String queryAwayGoal = "select "
+            + "(SUM(case when goalhome < goalaway THEN 1 ELSE 0 END)) as win, "
+            + "(SUM(case when goalhome = goalaway THEN 1 ELSE 0 END)) as draw, "
+            + "(SUM(case when goalhome > goalaway THEN 1 ELSE 0 END)) as lose, "
+            + "SUM(goalhome) as gs, "
+            + "SUM(goalaway) as gf "
+            + " from " + Match.builder.TABLE()
+            + " where idround in(select idround "
+            + "from round "
+            + "where idseason=? and league=? and played=1) and idteamaway=? ";
 
-        String queryAll = "select idteamhome from match where idround in (select idround from round where idseason=? and league=? and played=1)";
-        String queryAllAway = "select idteamaway from match where idround in (select idround from round where idseason=? and league=? and played=1)";
+        String queryAll = "select idteamhome,idteamaway "
+            + "from match "
+            + "where idround in (select idround from round where idseason=? and league=? and played=1)";
 
         try (Connection con = openConnection();
             PreparedStatement psHome = con.prepareStatement(queryHomeGoal);
             PreparedStatement psAway = con.prepareStatement(queryAwayGoal);
-            PreparedStatement allTeams = con.prepareStatement(queryAll);
-            PreparedStatement allTeamsAway = con.prepareStatement(queryAllAway);) {
+            PreparedStatement allTeams = con.prepareStatement(queryAll);) {
 
             Set<Integer> teams = new HashSet<>();
             allTeams.setInt(1, idseason);
             allTeams.setInt(2, idleague);
-            allTeamsAway.setInt(1, idseason);
-            allTeamsAway.setInt(2, idleague);
 
             psAway.setInt(1, idseason);
             psAway.setInt(2, idleague);
@@ -157,38 +171,41 @@ public class DatabaseManager {
             try (ResultSet rs = allTeams.executeQuery();) {
                 while (rs.next()) {
                     teams.add(rs.getInt(1));
+                    teams.add(rs.getInt(2));
                 }
             }
-            try (ResultSet rs = allTeamsAway.executeQuery();) {
-                while (rs.next()) {
-                    teams.add(rs.getInt(1));
-                }
-            }
-
             for (Integer team : teams) {
-                int point = 0;
+                int win = 0;
+                int draw = 0;
+                int lose = 0;
+                int gf = 0;
+                int gs = 0;
                 psHome.setInt(3, team);
                 try (ResultSet rs = psHome.executeQuery();) {
                     while (rs.next()) {
-
-                        point += rs.getInt(1);
+                        win += rs.getInt("win");
+                        draw += rs.getInt("draw");
+                        lose += rs.getInt("lose");
+                        gf += rs.getInt("gf");
+                        gs += rs.getInt("gs");
                     }
                 }
                 psAway.setInt(3, team);
                 try (ResultSet rs = psAway.executeQuery();) {
                     while (rs.next()) {
-
-                        point += rs.getInt(1);
+                        win += rs.getInt("win");
+                        draw += rs.getInt("draw");
+                        lose += rs.getInt("lose");
+                        gf += rs.getInt("gf");
+                        gs += rs.getInt("gs");
                     }
                 }
-                table.getRows().add(new LeagueTable.LeagueTableRow(team, point));
+
+                table.getRows().add(new LeagueTable.LeagueTableRow(findTeamById(team).getName(), win, draw, lose, gf, gs));
             }
 
         } catch (Exception e) {
             throw new SQLException(e);
-        }
-        for (LeagueTable.LeagueTableRow row : table.getRows()) {
-            row.setTeamName(this.findTeamById(row.getIdteam()).getName());
         }
         Collections.sort(table.getRows(), (o1, o2) -> {
             if (o1.getPoint() == o2.getPoint()) {
@@ -204,11 +221,7 @@ public class DatabaseManager {
     public <T extends Entity> List<T> queryEntity(Class<T> clazz, QueryBuilder.WhereClause where, Object... params) throws SQLException {
         try {
             List<T> result = new ArrayList<>();
-            System.out.println("clazz" + clazz);
-            System.out.println("clazz" + Arrays.toString(clazz.getMethods()));
-            String query = QueryBuilder
-                .buildSelect((QueryBuilder<T>) clazz.getMethod("getBuilder").invoke(clazz.newInstance()), where);
-            System.out.println("query is:" + query);
+            String query = QueryBuilder.buildSelect((QueryBuilder<T>) clazz.getMethod("getBuilder").invoke(clazz.newInstance()), where);
             try (Connection con = openConnection();
                 PreparedStatement ps = con.prepareStatement(query);) {
                 int i = 1;
@@ -231,7 +244,6 @@ public class DatabaseManager {
 
     public int insertEntity(Entity metadata) throws SQLException {
         String query = QueryBuilder.buildInsert(metadata.getBuilder());
-        System.out.println("query is:" + query);
         try (Connection con = openConnection();
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);) {
             QueryBuilder.fillStatement(ps, metadata.getBuilder(), metadata);

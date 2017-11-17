@@ -8,7 +8,6 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
     $scope.actualRound;
     $scope.campionatotable = [];
     get('actual', function (r) {
-        console.log('chiedo actual' , r)
         if (r.simple > 0) {
             $scope.situation = 'main';
             $scope.actualRound = r.simple;
@@ -35,34 +34,46 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
                         if (!r.ok) {
                             $scope.teamchooserError = r.error;
                         } else {
-                            $scope.teamchooserError =  'ok';
+                            $scope.teamchooserError = 'ok';
                             $scope.situation = 'main';
                             $scope.actualRound = r.simple;
-                            
+
                             refresh();
-                            
+
                         }
                     });
                 };
             });
         } else if ($scope.situation === 'main') {
             get('round?idround=' + $scope.actualRound, function (r) {
-                $scope.navLabel = "Salva risultati";
-                console.log('qui')
                 $scope.actualMatches = {
                     played: r.played,
                     matches: r.simple
                 };
-                console.log(r);
                 $scope.campionatotable = r.table.rows;
-                
-                $scope.navLabelClick = function () {
-                    console.log($scope.actualMatches);
-                    post('postround', postRequestContent({matches: $scope.actualMatches.matches, idround: $scope.actualRound}), function (r) {
-                        console.log(r);
-                        refresh();
-                    });
-                };
+
+                if (!r.played) {
+                    $scope.navLabel = "Salva risultati";
+                    $scope.navLabelClick = function () {
+                        post('postround',
+                                postRequestContent({matches: $scope.actualMatches.matches, idround: $scope.actualRound}),
+                                function (r) {
+                                    console.log(r);
+                                    refresh();
+                                });
+                    };
+                } else {
+                    $scope.navLabel = "Prossimo turno";
+                    $scope.navLabelClick = function () {
+                        get('actual', function (r) {
+                            $scope.actualRound = r.simple;
+                            refresh();
+                        });
+                    };
+
+                }
+
+
             });
 
         }
@@ -98,7 +109,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
         $.ajax({url: window.location.origin + window.location.pathname + "rest/api/" + target,
             type: type,
             data: data,
-            async:false,
+            async: false,
             success: callback,
             headers: headers, error: function (result) {
                 console.error('error');

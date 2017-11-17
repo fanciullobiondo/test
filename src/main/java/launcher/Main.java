@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import org.apache.catalina.LifecycleException;
 import tomcat.TomcatManager;
@@ -45,10 +46,12 @@ public class Main {
         // creo db col nome dato o lo apro
         DatabaseManager manager = new DatabaseManager(databasePath, "esempio 1 oggi");
         
-        // scegliere squadre, mostro tutte quelle in embeddedData
-        //
         
         engine.Engine engine = new Engine(manager);
+//        engine.insertTeams(EmbeddedData.ALL_TEAMS.values().stream().limit(2).map(t -> t.getName()).collect(Collectors.toList()));
+            
+//        engine.newSeason();
+
         try {
             tomcat.start(port, engine);
         } catch (ServletException | LifecycleException e) {
