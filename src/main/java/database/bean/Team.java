@@ -6,7 +6,6 @@
 package database.bean;
 
 import data.EmbeddedData;
-import static database.bean.Match.builder;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;

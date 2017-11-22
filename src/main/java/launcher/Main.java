@@ -2,20 +2,14 @@ package launcher;
 
 import data.EmbeddedData;
 import database.DatabaseManager;
-import database.bean.Match;
-import database.bean.QueryBuilder.WhereClause;
 import database.bean.Team;
 import engine.Engine;
-import java.io.BufferedReader;
+import engine.SeasonCalculator;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-import javax.servlet.ServletException;
-import org.apache.catalina.LifecycleException;
 import tomcat.TomcatManager;
 
 /**
@@ -45,20 +39,31 @@ public class Main {
         // nuova partita
         // creo db col nome dato o lo apro
         DatabaseManager manager = new DatabaseManager(databasePath, "esempio 1 oggi");
-        
-        
-        engine.Engine engine = new Engine(manager);
-//        engine.insertTeams(EmbeddedData.ALL_TEAMS.values().stream().limit(2).map(t -> t.getName()).collect(Collectors.toList()));
-            
-//        engine.newSeason();
 
-        try {
-            tomcat.start(port, engine);
-        } catch (ServletException | LifecycleException e) {
-            System.err.println("Error on startup tomcat");
-            System.err.println(e);
-            tomcat.shutdown();
-        }
+
+        engine.Engine engine = new Engine(manager);
+        engine.insertTeams(EmbeddedData.ALL_TEAMS.values()
+            .stream()
+            .filter(m -> m.getLeague().getId() == EmbeddedData.League.CAMPIONATO)
+            .limit(2)
+            .map(t -> t.getName())
+            .collect(Collectors.toList()));
+//
+        int newSeason = engine.newSeason();
+//        System.out.println("news" + newSeason);
+//        System.out.println(manager.getRelativeRoundIndex(newSeason));
+//        System.out.println(manager.getRelativeRoundIndex(newSeason+1));
+
+
+
+//
+//        try {
+//            tomcat.start(port, engine);
+//        } catch (ServletException | LifecycleException e) {
+//            System.err.println("Error on startup tomcat");
+//            System.err.println(e);
+//            tomcat.shutdown();
+//        }
     }
 
     private static void kill(int port) throws IOException, InterruptedException {

@@ -1,33 +1,53 @@
 'use strict';
 
 
-angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
+angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
     $scope.navLabel = "Nuova stagione";
     $scope.humans = 2;
     $scope.actualMatches = {};
     $scope.actualRound;
     $scope.campionatotable = [];
-    get('actual', function (r) {
-        if (r.simple > 0) {
-            $scope.situation = 'main';
-            $scope.actualRound = r.simple;
-        } else {
-            $scope.situation = 'start';
-        }
-        refresh();
-    });
+    $scope.round;
 
-    function refresh() {
+    $scope.showNext = function () {
+        refresh();
+    };
+    $scope.showPrev = function () {
+        $scope.actualRound--;
+        refresh(true);
+    };
+
+    function actual() {
+        get('actual', function (r) {
+            if (r.simple && r.simple.idround > 0) {
+                $scope.situation = 'main';
+                $scope.actualRound = r.simple.idround;
+                $scope.round = r.simple;
+                angular.element(window.document).find('.tab-' + r.simple.league).click();
+            } else {
+                $scope.situation = 'start';
+            }
+        });
+    }
+    
+    refresh();
+    angular.element(window.document).find('.maincontainer').fadeIn(300);
+    
+
+    function refresh(skipactual) {
+        if (!skipactual) {
+            actual();
+        }
+        console.log($scope.actualRound)
         if ($scope.situation === 'start') {
             $scope.navLabel = "Nuova stagione";
             $scope.navLabelClick = function () {
                 $scope.situation = 'teamchooser';
-                refresh();
+                refresh(true);
             };
         } else if ($scope.situation === 'teamchooser') {
             get('teamchooser', function (r) {
                 $scope.teamchooserTeams = r.simple;
-                console.log('teams', r);
                 $scope.navLabel = "Comincia stagione";
                 $scope.navLabelClick = function () {
                     post('postteamchooser', postRequestContent(readSelectedTeams($scope)), function (r) {
@@ -37,15 +57,18 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
                             $scope.teamchooserError = 'ok';
                             $scope.situation = 'main';
                             $scope.actualRound = r.simple;
-
                             refresh();
-
                         }
                     });
                 };
             });
         } else if ($scope.situation === 'main') {
             get('round?idround=' + $scope.actualRound, function (r) {
+                if (!r.ok) {
+                    refresh();
+                    return;
+                }
+                
                 $scope.actualMatches = {
                     played: r.played,
                     matches: r.simple
@@ -58,22 +81,16 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $interval) {
                         post('postround',
                                 postRequestContent({matches: $scope.actualMatches.matches, idround: $scope.actualRound}),
                                 function (r) {
-                                    console.log(r);
-                                    refresh();
+                                    refresh(true);
                                 });
                     };
                 } else {
                     $scope.navLabel = "Prossimo turno";
                     $scope.navLabelClick = function () {
-                        get('actual', function (r) {
-                            $scope.actualRound = r.simple;
-                            refresh();
-                        });
+                        refresh();
                     };
 
                 }
-
-
             });
 
         }

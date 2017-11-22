@@ -5,8 +5,10 @@
  */
 package engine;
 
+import data.EmbeddedData;
+import static data.EmbeddedData.League.CHAMPIONS_LEAGUE;
+import static data.EmbeddedData.League.EUROPA_LEAGUE;
 import database.bean.Team;
-import static engine.Engine.CAMPIONATO_N_TEAMS;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -20,36 +22,109 @@ import java.util.stream.Collectors;
  */
 public class SeasonCalculator {
 
-    private final List<Team> teams;
+    private final Map<Integer, List<Team>> teams;
     private List<Integer> nextMatchHome = new ArrayList<>();
     private List<Integer> nextMatchAway = new ArrayList<>();
     private final List<SingleMatch> matches = new LinkedList<>();
+    private int actualLeague;
 
-    public SeasonCalculator(List<Team> teams) {
-        System.out.println("passed" + teams.size());
+    public SeasonCalculator(Map<Integer, List<Team>> teams) {
         this.teams = teams;
     }
 
     public Map<Integer, List<SingleMatch>> run() {
-        List<Integer> tsids = new ArrayList<>(teams.stream().map(Team::getIdteam).collect(Collectors.toList()));
-        Collections.shuffle(tsids);
-        int rounds = tsids.size() - 1;
-        for (int i = 0; i < rounds; i++) {
-            calculateRound(tsids, i);
+        int roundCount = 0;
+        List<Integer> europeRounds = new LinkedList<>();
+        for (Map.Entry<Integer, List<Team>> entry : teams.entrySet()) {
 
-            int expectedMatchesSize = (i + 1) * (CAMPIONATO_N_TEAMS / 2);
-            if (expectedMatchesSize != matches.size()) {
-                throw new IllegalStateException("mi aspettavo al turno " + (i + 1) + " di avere "
-                    + expectedMatchesSize + " ma ne ho " + matches.size());
+            actualLeague = entry.getKey();
+            List<Team> value = entry.getValue();
+
+            List<Integer> tsids = new ArrayList<>(value.stream().map(Team::getIdteam).collect(Collectors.toList()));
+            Collections.shuffle(tsids);
+
+            System.out.println("act:" + actualLeague);
+            if (actualLeague == EmbeddedData.League.CAMPIONATO) {
+                int rounds = tsids.size() - 1;
+                for (int i = 0; i < rounds; i++) {
+                    calculateRound(tsids, roundCount, false);
+                    System.out.println("camop" + roundCount);
+                    roundCount++;
+
+                    int expectedMatchesSize = (i + 1) * (tsids.size() / 2);
+                    if (expectedMatchesSize != matches.size()) {
+                        throw new IllegalStateException("mi aspettavo al turno " + (i + 1) + " di avere "
+                            + expectedMatchesSize + " ma ne ho " + matches.size());
+                    }
+                }
+                nextMatchHome.clear();
+                nextMatchAway.clear();
+            } else if (actualLeague == EmbeddedData.League.COPPA) {
+                // quarti
+                calculateRound(tsids, roundCount, true);
+                System.out.println("coppa" + roundCount);
+                roundCount++;
+                // semi
+                for (int j = 0; j < 2; j++) {
+                    matches.add(new SingleMatch(tsids.get(0), tsids.get(0), roundCount, actualLeague));
+                }
+                roundCount++;
+                // finale
+                matches.add(new SingleMatch(tsids.get(0), tsids.get(0), roundCount, actualLeague));
+                roundCount++;
+                nextMatchHome.clear();
+                nextMatchAway.clear();
+
+            } else {
+                if (europeRounds.isEmpty()) {
+                    System.out.println("ur1" + roundCount);
+                    // ottavi
+                    calculateRound(tsids, roundCount, true);
+                    europeRounds.add(roundCount);
+                    roundCount++;
+                    // mock rounds
+                    // quarti
+                    for (int j = 0; j < 4; j++) {
+                        matches.add(new SingleMatch(tsids.get(0), tsids.get(0), roundCount, EUROPA_LEAGUE));
+                    }
+                    europeRounds.add(roundCount);
+                    roundCount++;
+                    // semi
+                    for (int j = 0; j < 2; j++) {
+                        matches.add(new SingleMatch(tsids.get(0), tsids.get(0), roundCount, EUROPA_LEAGUE));
+                    }
+                    europeRounds.add(roundCount);
+                    roundCount++;
+                    // finale
+                    matches.add(new SingleMatch(tsids.get(0), tsids.get(0), roundCount, EUROPA_LEAGUE));
+                    europeRounds.add(roundCount);
+                    roundCount++;
+                } else {
+                    System.out.println("ur3" + roundCount);
+                    calculateRound(tsids, europeRounds.get(0), true);
+                    //quarti
+                    for (int j = 0; j < 4; j++) {
+                        matches.add(new SingleMatch(tsids.get(0), tsids.get(0), europeRounds.get(1), EUROPA_LEAGUE));
+                    }
+                    // semi
+                    for (int j = 0; j < 2; j++) {
+                        matches.add(new SingleMatch(tsids.get(0), tsids.get(0), europeRounds.get(2), EUROPA_LEAGUE));
+                    }
+                    // finale
+                    matches.add(new SingleMatch(tsids.get(0), tsids.get(0), europeRounds.get(3), EUROPA_LEAGUE));
+
+                }
+                nextMatchHome.clear();
+                nextMatchAway.clear();
             }
         }
         return matches.stream().collect(Collectors.groupingBy(SingleMatch::getRound));
     }
 
-    private void calculateRound(List<Integer> tsids, int actualRound) {
-        if (matches.isEmpty()) {
-            nextMatchAway = new ArrayList<>(tsids.subList(0, CAMPIONATO_N_TEAMS / 2));
-            nextMatchHome = new ArrayList<>(tsids.subList(CAMPIONATO_N_TEAMS / 2, CAMPIONATO_N_TEAMS));
+    public void calculateRound(List<Integer> tsids, int actualRound, boolean singleRound) {
+        if (matches.isEmpty() || singleRound) {
+            nextMatchAway = new ArrayList<>(tsids.subList(0, tsids.size() / 2));
+            nextMatchHome = new ArrayList<>(tsids.subList(tsids.size() / 2, tsids.size()));
         }
         List<Integer> _nextHome = new ArrayList<>();
         List<Integer> _nextAway = new ArrayList<>();
@@ -88,32 +163,39 @@ public class SeasonCalculator {
     }
 
     private void addMatch(Integer a, Integer b, int actualRound) {
-        matches.add(new SingleMatch(a, b, actualRound));
+        matches.add(new SingleMatch(a, b, actualRound, actualLeague != CHAMPIONS_LEAGUE ? actualLeague : EUROPA_LEAGUE));
     }
 
     private boolean alreadyPlayed(Integer a, Integer b) {
-        return matches.stream().anyMatch(m -> new SingleMatch(a, b, -1).equals(m));
+        return matches.stream().filter(m -> m.league == actualLeague).anyMatch(m -> new SingleMatch(a, b).equals(m));
     }
 
     public static class SingleMatch {
 
         @Override
         public String toString() {
-            return "SingleMatch{" + "a=" + homeTeam + ", b=" + awayTeam + '}';
+            return "SingleMatch{" + "homeTeam=" + homeTeam + ", awayTeam=" + awayTeam + ", round=" + round + ", league=" + league + '}';
         }
 
         int homeTeam;
         int awayTeam;
         int round;
+        int league;
 
         public int getRound() {
             return round;
         }
 
-        public SingleMatch(int a, int b, int round) {
-            this.homeTeam = a;
-            this.awayTeam = b;
+        public SingleMatch(int homeTeam, int awayTeam) {
+            this.homeTeam = homeTeam;
+            this.awayTeam = awayTeam;
+        }
+
+        public SingleMatch(int homeTeam, int awayTeam, int round, int league) {
+            this.homeTeam = homeTeam;
+            this.awayTeam = awayTeam;
             this.round = round;
+            this.league = league;
         }
 
         @Override

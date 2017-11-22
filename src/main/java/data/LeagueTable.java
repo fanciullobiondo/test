@@ -6,6 +6,7 @@
 package data;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -14,8 +15,35 @@ import java.util.List;
  */
 public class LeagueTable {
 
+    public static Comparator<LeagueTableRow> compare = new Comparator<LeagueTableRow>() {
+        @Override
+        public int compare(LeagueTableRow o1, LeagueTableRow o2) {
+            if (o1.getPoint() == o2.getPoint()) {
+                if (o1.getDg() == o2.getDg()) {
+                    if (o1.getGf() == o2.getGf()) {
+                        return o1.getTeamName().compareTo(o2.getTeamName());
+                    }
+                    return o1.getGf() < o2.getGf() ? 1 : -1;
+                }
+                return o1.getDg() < o2.getDg() ? 1 : -1;
+
+            }
+            return o1.getPoint() < o2.getPoint() ? 1 : -1;
+        }
+    };
+
     List<LeagueTableRow> rows = new ArrayList<>();
 
+    int idseason;
+
+    public int getIdseason() {
+        return idseason;
+    }
+
+    public void setIdseason(int idseason) {
+        this.idseason = idseason;
+    }
+    
     public List<LeagueTableRow> getRows() {
         return rows;
     }
@@ -39,7 +67,7 @@ public class LeagueTable {
             this.gf = gf;
             this.gs = gs;
             this.played = win + draw + lose;
-            this.point = (win*3) + draw;
+            this.point = (win * 3) + draw;
             this.dg = gf - gs;
         }
 

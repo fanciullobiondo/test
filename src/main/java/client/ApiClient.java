@@ -4,6 +4,7 @@ import data.EmbeddedData;
 import data.EmbeddedData.League;
 import data.LeagueTable;
 import database.bean.Match;
+import database.bean.Round;
 import engine.Engine;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -35,7 +36,7 @@ public class ApiClient {
     @Context
     private HttpServletRequest servletRequest;
 
-    private Map<Integer, LeagueTable> leagueCache  = new HashMap<>();
+    private Map<Integer, LeagueTable> leagueCache = new HashMap<>();
 
     private LeagueTable getLeagueTable(int idround) throws SQLException {
         LeagueTable get = leagueCache.get(idround);
@@ -44,7 +45,7 @@ public class ApiClient {
             leagueCache.put(idround, get);
         }
         return get;
-        
+
     }
 
     private Engine getManager() {
@@ -62,13 +63,18 @@ public class ApiClient {
     @GET
     @Path("/actual")
     public Map<String, Object> actual() throws SQLException, NamingException {
-        return simpleResult(getManager().getActualRound());
+        int idround = getManager().getActualRound();
+        return simpleResult(getManager().getRoundInfo(idround));
     }
 
     @GET
     @Path("/round")
     public Map<String, Object> getRoundInfo(@QueryParam("idround") int idround) throws SQLException, NamingException {
         List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
+        if (roundMatches == null) {
+            // round non esiste
+            return error("round non esiste");
+        }
         Map<String, Object> simpleResult = simpleResult(roundMatches);
         simpleResult.put("played", getManager().isRoundPlayed(idround));
         simpleResult.put("table", getLeagueTable(idround));
@@ -96,7 +102,7 @@ public class ApiClient {
         }
 
         getManager().insertTeams(selected);
-        int nextRound = getManager().newSeason();
+        int nextRound = getManager().getActualRound();
         return simpleResult(nextRound);
     }
 
@@ -111,7 +117,7 @@ public class ApiClient {
         Integer idround = (Integer) content.get("idround");
 
         try {
-            getManager().playRound(idround, matches.stream().map(rm -> new Match(RoundMatch.wrap((Map)rm))).collect(Collectors.toList()));
+            getManager().playRound(idround, matches.stream().map(rm -> new Match(RoundMatch.wrap((Map) rm))).collect(Collectors.toList()));
         } catch (BadRequestException e) {
             return error(e.getMessage());
         }
@@ -154,11 +160,11 @@ public class ApiClient {
 
     public static class RoundMatch {
 
-        public static RoundMatch wrap(Map<?,?> map) {
+        public static RoundMatch wrap(Map<?, ?> map) {
             RoundMatch rm = new RoundMatch();
-            rm.setIdmatch((Integer)map.get("idmatch"));
-            rm.setHome(TeamResult.wrap((Map)map.get("home")));
-            rm.setAway(TeamResult.wrap((Map)map.get("away")));
+            rm.setIdmatch((Integer) map.get("idmatch"));
+            rm.setHome(TeamResult.wrap((Map) map.get("home")));
+            rm.setAway(TeamResult.wrap((Map) map.get("away")));
             return rm;
         }
 
@@ -199,16 +205,29 @@ public class ApiClient {
             this.away = away;
         }
 
+        public void setMoneyHome(int m) {
+            if (home != null) {
+                home.setMoney(m);
+            }
+        }
+
+        public void setMoneyAway(int m) {
+            if (away != null) {
+                away.setMoney(m);
+            }
+
+        }
+
         public static class TeamResult {
-            public static TeamResult wrap(Map<?,?> map) {
-                return new TeamResult((Integer)map.get("goal"));
+
+            public static TeamResult wrap(Map<?, ?> map) {
+                return new TeamResult((Integer) map.get("goal"));
             }
 
             public TeamResult(int goal) {
                 this.goal = goal;
             }
 
-            
             public TeamResult(int id, String name, int goal, boolean ofUser) {
                 this.id = id;
                 this.name = name;
@@ -230,7 +249,6 @@ public class ApiClient {
                 this.money = money;
             }
 
-            
             public boolean isOfUser() {
                 return ofUser;
             }

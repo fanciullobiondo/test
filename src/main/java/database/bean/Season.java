@@ -64,7 +64,7 @@ public class Season extends Entity{
 
         @Override
         public String SELECT_HEADER() {
-            return "idseason,sequence";
+            return "idSeason,sequence";
         }
 
         @Override
@@ -80,7 +80,7 @@ public class Season extends Entity{
         @Override
         public String CREATE() {
             return "create table " + TABLE() + " ("
-                + "id integer primary key autoincrement,"
+                + "idSeason integer primary key autoincrement,"
                 + "sequence int not null)";
 
         }

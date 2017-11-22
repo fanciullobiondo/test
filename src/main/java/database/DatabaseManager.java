@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -44,6 +45,35 @@ public class DatabaseManager {
     public DatabaseManager(String databasePath, final String databaseName) {
         this.databasePath = databasePath;
         this.databaseName = sanitifyName(databaseName);
+    }
+
+    public int getRelativeRoundIndex(int idround) throws SQLException {
+        List<Round> queryEntity = queryEntity(Round.class, QueryBuilder.WhereClause.instance().field("idround", "="), idround);
+        if (queryEntity.isEmpty()) {
+            return -1;
+        }
+        int idSeason = queryEntity.get(0).getIdSeason();
+
+        try (Connection con = openConnection();) {
+            try (PreparedStatement psMatch = con
+                .prepareStatement("Select distinct idround from " + Match.builder.TABLE() + " where idround IN "
+                    + "(select idround from " + Round.builder.TABLE() + " where idseason = ? ) "
+                    + " order by idround")) {
+                psMatch.setInt(1, idSeason);
+                int count = 1;
+                try (ResultSet rs = psMatch.executeQuery();) {
+                    while (rs.next()) {
+                        if (rs.getInt(1) == idround) {
+                            return count;
+                        }
+                        count++;
+                    }
+                }
+
+            }
+        }
+        return -1;
+
     }
 
     public Team findTeamById(int id) throws SQLException {
@@ -127,6 +157,7 @@ public class DatabaseManager {
 
     public LeagueTable calculateLeagueTable(int idseason, int idleague) throws SQLException {
         LeagueTable table = new LeagueTable();
+        table.setIdseason(idseason);
         String queryHomeGoal = "select "
             + "(SUM(case when goalhome > goalaway THEN 1 ELSE 0 END)) as win, "
             + "(SUM(case when goalhome = goalaway THEN 1 ELSE 0 END)) as draw, "
@@ -207,15 +238,28 @@ public class DatabaseManager {
         } catch (Exception e) {
             throw new SQLException(e);
         }
-        Collections.sort(table.getRows(), (o1, o2) -> {
-            if (o1.getPoint() == o2.getPoint()) {
-                return 0;
-            }
-            return o1.getPoint() < o2.getPoint() ? 1 : -1;
-        });
+        Collections.sort(table.getRows(), LeagueTable.compare);
 
         return table;
 
+    }
+
+    public List<Team> getTeamsForLeague(int n, int league) throws SQLException {
+        List<Team> result = new ArrayList<>();
+        try (Connection con = openConnection();
+            PreparedStatement ps = con.prepareStatement("select " + Team.builder.SELECT_HEADER() + " from " + Team.builder.TABLE()
+                + " where idleague = ? and ofuser = 0 limit " + n);) {
+            ps.setInt(1, league);
+            try (ResultSet rs = ps.executeQuery();) {
+
+                while (rs.next()) {
+                    result.add(new Team().fromResultSet(rs));
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
     }
 
     public <T extends Entity> List<T> queryEntity(Class<T> clazz, QueryBuilder.WhereClause where, Object... params) throws SQLException {
