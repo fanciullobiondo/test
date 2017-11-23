@@ -3,11 +3,12 @@
 
 angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
     $scope.navLabel = "Nuova stagione";
-    $scope.humans = 2;
+    $scope.humans = 1;
     $scope.actualMatches = {};
     $scope.actualRound;
     $scope.campionatotable = [];
     $scope.round;
+    $scope.buttonDisabled = false;
 
     $scope.showNext = function () {
         refresh();
@@ -23,22 +24,22 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 $scope.situation = 'main';
                 $scope.actualRound = r.simple.idround;
                 $scope.round = r.simple;
-                angular.element(window.document).find('.tab-' + r.simple.league).click();
+                console.log(r)
+                angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
             } else {
                 $scope.situation = 'start';
             }
         });
     }
-    
+
     refresh();
     angular.element(window.document).find('.maincontainer').fadeIn(300);
-    
+
 
     function refresh(skipactual) {
         if (!skipactual) {
             actual();
         }
-        console.log($scope.actualRound)
         if ($scope.situation === 'start') {
             $scope.navLabel = "Nuova stagione";
             $scope.navLabelClick = function () {
@@ -68,12 +69,16 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                     refresh();
                     return;
                 }
-                
+                $scope.round = r.round;
+
                 $scope.actualMatches = {
                     played: r.played,
                     matches: r.simple
                 };
                 $scope.campionatotable = r.table.rows;
+                $scope.billboardCl = r.billboardCh;
+                $scope.billboardEl = r.billboardEl;
+                $scope.billboardCo = r.billboardCo;
 
                 if (!r.played) {
                     $scope.navLabel = "Salva risultati";
@@ -96,6 +101,16 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
         }
 
     }
+    $scope.getCoGoal = function (r, index, home) {
+        if (!$scope.billboardCo) {
+            return "-";
+        }
+        return $scope.getBillboardGoal($scope.billboardCo, r, index, home);
+    };
+
+    $scope.getBillboardGoal = function (cal, r, index, home) {
+        return cal.playedRounds > r ? (home ? cal.matches[r][index].goalHome : cal.matches[r][index].goalAway) : '-';
+    };
     $scope.getNumber = function (num) {
         return new Array(num);
     };
@@ -127,7 +142,10 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
             type: type,
             data: data,
             async: false,
-            success: callback,
+            success: function (r) {
+                callback(r);
+                $scope.buttonDisabled = false;
+            },
             headers: headers, error: function (result) {
                 console.error('error');
             }});

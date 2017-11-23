@@ -7,11 +7,10 @@ package engine;
 
 import client.ApiClient;
 import client.BadRequestException;
+import data.BillboardTable;
 import data.EmbeddedData;
 import static data.EmbeddedData.League.CAMPIONATO;
-import static data.EmbeddedData.League.CHAMPIONS_LEAGUE;
 import static data.EmbeddedData.League.COPPA;
-import static data.EmbeddedData.League.EUROPA_LEAGUE;
 import data.LeagueTable;
 import database.DatabaseManager;
 import database.bean.Match;
@@ -31,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import static data.EmbeddedData.League.EUROPA;
 
 /**
  *
@@ -48,21 +48,20 @@ public class Engine {
     public static final int ALL_N_TEAMS = 40;
     public static final int ALL_CPU_TEAMS = 33;
 
-    public static final LinkedList<Integer> MATCHES_PATTERN = new LinkedList<>(Arrays.asList(
-        CAMPIONATO,
-        EUROPA_LEAGUE,
-        CAMPIONATO,
-        COPPA,
-        CAMPIONATO,
-        EUROPA_LEAGUE,
+    public static final LinkedList<Integer> MATCHES_PATTERN = new LinkedList<>(Arrays.asList(CAMPIONATO,
+        EUROPA,
         CAMPIONATO,
         COPPA,
         CAMPIONATO,
-        EUROPA_LEAGUE,
+        EUROPA,
         CAMPIONATO,
         COPPA,
         CAMPIONATO,
-        EUROPA_LEAGUE
+        EUROPA,
+        CAMPIONATO,
+        COPPA,
+        CAMPIONATO,
+        EUROPA
     ));
 
     public Engine(DatabaseManager manager) throws SQLException {
@@ -82,14 +81,18 @@ public class Engine {
 
     }
 
-    public MatchResult simulateMatch(Team home, Team away) {
+    public MatchResult simulateMatch(Team home, Team away, boolean canDraw) {
         MatchResult r = new MatchResult();
+        while (r.goalhome == r.goalaway) {
+            int goalHome = simulateDice(home.getAttack()) - simulateDice(away.getDefence());
+            int goalAway = simulateDice(away.getAttack()) - simulateDice(home.getDefence());;
+            r.goalhome = goalHome > 0 ? goalHome : 0;
+            r.goalaway = goalAway > 0 ? goalAway : 0;
+            if (canDraw) {
+                break;
+            }
+        }
 
-        int goalHome = simulateDice(home.getAttack()) - simulateDice(away.getDefence());
-        int goalAway = simulateDice(away.getAttack()) - simulateDice(home.getDefence());;
-
-        r.goalhome = goalHome > 0 ? goalHome : 0;
-        r.goalaway = goalAway > 0 ? goalAway : 0;
         return r;
 
     }
@@ -113,6 +116,12 @@ public class Engine {
             throw new BadRequestException("no match passed");
 
         }
+
+        System.out.println("Inizialmente passati " + passed.size());
+        for (Match match : passed) {
+            System.out.println("sm: " + match);
+
+        }
         Round theRound = manager.queryEntity(Round.class, WhereClause.instance().field("idround", "="), idround).get(0);
         if (theRound == null) {
             throw new BadRequestException("round not exists");
@@ -121,14 +130,73 @@ public class Engine {
             throw new BadRequestException("round already played");
         }
         List<Match> allMatchToSimulate = manager.getAllMatchToSimulate(idround);
-        for (Match match : allMatchToSimulate) {
-            MatchResult rs = simulateMatch(manager.findTeamById(match.getIdTeamHome()), manager.findTeamById(match.getIdTeamAway()));
-            match.setGoalHome(rs.goalhome);
-            match.setGoalAway(rs.goalaway);
-            passed.add(match);
+        System.out.println("allM" + allMatchToSimulate);
+
+        for (Match simulated : allMatchToSimulate) {
+            MatchResult rs = simulateMatch(manager.findTeamById(simulated.getIdTeamHome()),
+                manager.findTeamById(simulated.getIdTeamAway()), theRound.getLeague() == CAMPIONATO);
+            for (Match real : passed) {
+                if (real.getIdmatch() == simulated.getIdmatch()) {
+                    real.setGoalHome(rs.goalhome);
+                    real.setGoalAway(rs.goalaway);
+                    real.setSubIdLeague(simulated.getSubIdLeague());
+                    break;
+                }
+            }
+        }
+        System.out.println("poi passati " + passed.size());
+        for (Match match : passed) {
+            System.out.println("sm: " + match);
+
         }
 
         manager.updateRound(passed, idround);
+
+        if (theRound.getLeague() != CAMPIONATO) {
+            int next = manager.getNextRound(idround);
+            if (next != -1) {
+                if (theRound.getLeague() == EUROPA) {
+                    adjust(extractWinners(passed.stream()
+                        .filter(t -> t.getSubIdLeague() == EmbeddedData.League.SUB_EUROPALEAGUE)
+                        .collect(Collectors.toList())), next, EmbeddedData.League.SUB_EUROPALEAGUE);
+                    adjust(extractWinners(passed.stream()
+                        .filter(t -> t.getSubIdLeague() == EmbeddedData.League.SUB_CHAMPIONSLEAGUE)
+                        .collect(Collectors.toList())), next, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
+                } else {
+                    adjust(extractWinners(passed), next, EmbeddedData.League.SUB_NONE);
+                }
+
+            }
+        }
+
+    }
+
+    private static List<Integer> extractWinners(List<Match> m) {
+        System.out.println("estraggo  " + m.size());
+        for (Match match : m) {
+            System.out.println("sm: " + match);
+
+        }
+        return m.stream()
+            .map((t) -> {
+                int h = t.getGoalHome();
+                int a = t.getGoalAway();
+                if (h > a) {
+                    return t.getIdTeamHome();
+                } else {
+                    // TO DO GESTIRE PAREGGIO
+                    return t.getIdTeamAway();
+                }
+            }).collect(Collectors.toList());
+    }
+
+    private void adjust(List<Integer> ids, int idround, int subleague) throws SQLException {
+        SeasonCalculator seasonCalculator = new SeasonCalculator(null);
+        System.out.println("passo" + ids);
+        seasonCalculator.calculateRound(ids, 0, true);
+        Map<Integer, List<SingleMatch>> res = seasonCalculator.getResult();
+        System.out.println("result " + res);
+        manager.adjustRoundMatches(res.get(0), idround, subleague);
     }
 
     public int getActualRound() throws SQLException {
@@ -146,8 +214,12 @@ public class Engine {
             return null;
         }
         List<Match> getMatches = manager.queryEntity(Match.class, WhereClause.instance().field("idround", "="), idround);
-        LeagueTable league = calculateLeagueTable(idround - 1, getRounds.get(0).getLeague());
-
+        Round rou = getRounds.get(0);
+        LeagueTable league = null;
+        if (rou.getLeague() == CAMPIONATO) {
+            league = calculateLeagueTable(idround - 1);
+        }
+        
         for (Match matche : getMatches) {
             ApiClient.RoundMatch roundMatch = new ApiClient.RoundMatch();
             roundMatch.setIdmatch(matche.getIdmatch());
@@ -159,10 +231,27 @@ public class Engine {
                 teamAway.getName(), matche.getGoalAway(), teamAway.isOfuser()));
             roundMatch.setEditable(teamHome.isOfuser() || teamAway.isOfuser());
             if (league != null) {
+                System.out.println("chiedo solo team= " + teamAway.getIdteam());
                 roundMatch.setMoneyHome(calculateMoneyForTeamLeagueTable(teamAway.getIdteam(), league));
                 roundMatch.setMoneyAway(calculateMoneyForTeamLeagueTable(teamHome.getIdteam(), league));
+            } else {
+                roundMatch.setMoneyHome(40);
+                roundMatch.setMoneyAway(40);
             }
-
+            switch (getRounds.get(0).getLeague()) {
+                case CAMPIONATO:
+                    roundMatch.setEuropean(false);
+                    roundMatch.setCampionato(true);
+                    break;
+                case COPPA:
+                    roundMatch.setCampionato(false);
+                    roundMatch.setEuropean(false);
+                    break;
+                case EUROPA:
+                    roundMatch.setEuropean(true);
+                    roundMatch.setCl(matche.getSubIdLeague() == EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
+                    break;
+            }
             finalMatches.add(roundMatch);
         }
         return finalMatches;
@@ -203,7 +292,7 @@ public class Engine {
             List<EmbeddedData.Team> allteams = new ArrayList<>(
                 EmbeddedData.ALL_TEAMS.values()
                     .stream()
-                    .filter(s -> s.getLeague().getId() == EUROPA_LEAGUE)
+                    .filter(s -> s.getLeague().getId() == EUROPA && s.getLeague().getSubid() == EmbeddedData.League.SUB_EUROPALEAGUE)
                     .collect(Collectors.toList()));
             Collections.shuffle(allteams);
             reallyInsertCPUTeams(allteams, EUROPA_LEAGUE_N_TEAMS, choosen);
@@ -212,7 +301,7 @@ public class Engine {
             List<EmbeddedData.Team> allteams = new ArrayList<>(
                 EmbeddedData.ALL_TEAMS.values()
                     .stream()
-                    .filter(s -> s.getLeague().getId() == CHAMPIONS_LEAGUE)
+                    .filter(s -> s.getLeague().getId() == EUROPA && s.getLeague().getSubid() == EmbeddedData.League.SUB_CHAMPIONSLEAGUE)
                     .collect(Collectors.toList()));
             Collections.shuffle(allteams);
             reallyInsertCPUTeams(allteams, EUROPA_CHAMPIONS_N_TEAMS, choosen);
@@ -256,17 +345,25 @@ public class Engine {
         Map<String, Object> res = new HashMap<>();
         res.put("league", EmbeddedData.League.getNameById(rounds.get(0).getLeague()));
         res.put("season", rounds.get(0).getIdSeason());
-        res.put("relativeround", manager.getRelativeRoundIndex(idround));
+        res.put("relativeround", EmbeddedData.League.getRelativeNameOfRound(rounds.get(0).getLeague(), manager.getRelativeRoundIndex(idround)));
         res.put("idround", idround);
         return res;
     }
 
-    public LeagueTable calculateLeagueTable(int idround, int idleague) throws SQLException {
+    public LeagueTable calculateLeagueTable(int idround) throws SQLException {
         List<Round> round = manager.queryEntity(Round.class, WhereClause.instance().field("idround", "="), idround);
         if (round == null || round.isEmpty()) {
             return null;
         }
-        return manager.calculateLeagueTable(round.get(0).getIdSeason(), idleague);
+        return manager.calculateLeagueTable(round.get(0).getIdSeason(), CAMPIONATO);
+    }
+
+    public BillboardTable calculateBillboard(int idround, int idleague, int subleague) throws SQLException {
+        List<Round> round = manager.queryEntity(Round.class, WhereClause.instance().field("idround", "="), idround);
+        if (round == null || round.isEmpty()) {
+            return null;
+        }
+        return manager.calculateBillboard(round.get(0).getIdSeason(), idleague, subleague);
     }
 
     public int nextRound(List<Match> matches) throws SQLException {
@@ -309,36 +406,36 @@ public class Engine {
         allTeamsByLeague.put(EmbeddedData.League.COPPA, campionatoTeams);
 
         if (first) {
+            List<Team> eulTeams = manager.queryEntity(Team.class,
+                WhereClause.instance()
+                    .field("league", "="), EUROPA);
 
-            List<Team> eulTeams = manager.queryEntity(Team.class, WhereClause.instance().field("league", "="), EUROPA_LEAGUE);
-            allTeamsByLeague.put(EmbeddedData.League.EUROPA_LEAGUE, eulTeams);
-
-            List<Team> chTeams = manager.queryEntity(Team.class, WhereClause.instance().field("league", "="), CHAMPIONS_LEAGUE);
-            allTeamsByLeague.put(EmbeddedData.League.CHAMPIONS_LEAGUE, chTeams);
+            allTeamsByLeague.put(EmbeddedData.League.EUROPA, eulTeams);
+            System.out.println("Ciao" + eulTeams.size());
         } else {
-            {
-                List<Team> cpuTeams = manager.getTeamsForLeague(EUROPA_LEAGUE_CPU_TEAMS, EUROPA_LEAGUE);
-                cpuTeams.addAll(getQualifiedForLeague(idSeason - 1, EUROPA_LEAGUE));
-                allTeamsByLeague.put(EmbeddedData.League.EUROPA_LEAGUE, cpuTeams);
+            List<Team> cpuTeams = manager.getTeamsForLeague(EUROPA_LEAGUE_CPU_TEAMS, EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE);
+            List<Team> eut = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_EUROPALEAGUE);
+            for (Team team : eut) {
+                team.setLeague(EUROPA);
+                team.setSubleague(EmbeddedData.League.SUB_EUROPALEAGUE);
             }
-            {
-                List<Team> cpuTeams = manager.getTeamsForLeague(EUROPA_CHAMPIONS_CPU_TEAMS, CHAMPIONS_LEAGUE);
-                cpuTeams.addAll(getQualifiedForLeague(idSeason - 1, CHAMPIONS_LEAGUE));
-                allTeamsByLeague.put(EmbeddedData.League.CHAMPIONS_LEAGUE, cpuTeams);
+            cpuTeams.addAll(eut);
+
+            cpuTeams.addAll(manager.getTeamsForLeague(EUROPA_CHAMPIONS_CPU_TEAMS, EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE));
+            List<Team> t = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
+            for (Team team : t) {
+                team.setLeague(EUROPA);
+                team.setSubleague(EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
             }
+            cpuTeams.addAll(t);
+            allTeamsByLeague.put(EUROPA, cpuTeams);
+            System.out.println("Ciao" + cpuTeams.size());
 
         }
-
-        System.out.println("allT" + allTeamsByLeague);
 
         SeasonCalculator seasonCalculator = new SeasonCalculator(allTeamsByLeague);
 
         Map<Integer, List<SeasonCalculator.SingleMatch>> calculatedRound = seasonCalculator.run();
-        for (Map.Entry<Integer, List<SingleMatch>> entry : calculatedRound.entrySet()) {
-            Integer key = entry.getKey();
-            List<SingleMatch> value = entry.getValue();
-            System.out.println("k:" + key + " " + value.get(0).league + "  " + value.size());
-        }
 
         Map<Integer, List<Integer>> leagueRounds = new HashMap<>();
         for (Map.Entry<Integer, List<SingleMatch>> entry : calculatedRound.entrySet()) {
@@ -362,11 +459,6 @@ public class Engine {
             Integer idRound = leagueRounds.get(idleague).remove(0);
             sortedRound.put(idRound, calculatedRound.get(idRound));
         }
-//        for (Map.Entry<Integer, List<SingleMatch>> entry : sortedRound.entrySet()) {
-//            Integer key = entry.getKey();
-//            List<SingleMatch> value = entry.getValue();
-//            System.out.println("league:" + key + "" + value);
-//        }
 
         int nextRound = 0;
         for (Map.Entry<Integer, List<SingleMatch>> entry : sortedRound.entrySet()) {
@@ -383,6 +475,7 @@ public class Engine {
                 match.setIdRound(idRound);
                 match.setIdTeamHome(singleMatch.homeTeam);
                 match.setIdTeamAway(singleMatch.awayTeam);
+                match.setSubIdLeague(singleMatch.subleague);
                 manager.insertEntity(match);
             }
         }
@@ -391,40 +484,62 @@ public class Engine {
     }
 
     public int getPositionForTeams(int idteam, int idseason) throws SQLException {
-        String name = manager.findTeamById(idteam).getName();
-        return getPositionsOfSeason(idseason, true).get(name);
+        System.out.println(getPositionsOfSeason(idseason, true));
+        System.out.println("getTeam" + idteam);
+        System.out.println("getTeam" + manager
+                .findTeamById(idteam));
+        return getPositionsOfSeason(idseason, true)
+            .get(manager
+                .findTeamById(idteam));
     }
 
-    public Map<String, Integer> getPositionsOfSeason(int idseason, boolean reverse) throws SQLException {
-        Map<String, Integer> positions = new HashMap<>();
+    // squdra, pos
+    private Map<Team, Integer> getPositionsOfSeason(int idseason, boolean reverse) throws SQLException {
+        Map<Team, Integer> positions = new HashMap<>();
         LeagueTable table = manager.calculateLeagueTable(idseason, CAMPIONATO);
         Collections.sort(table.getRows(), LeagueTable.compare);
         if (reverse) {
             Collections.reverse(table.getRows());
         }
         for (int i = 0; i < table.getRows().size(); i++) {
-            positions.put(table.getRows().get(i).getTeamName(), i);
+            positions.put(manager.findTeamById(table.getRows().get(i).getTeamId()), i);
         }
         return positions;
     }
 
-    public List<Team> getQualifiedForLeague(int idseason, int league) throws SQLException {
+    private static Team getTeamAtPosition(Map<Team, Integer> l, int i) {
+        for (Map.Entry<Team, Integer> entry : l.entrySet()) {
+            if (entry.getValue() == i) {
+                return entry.getKey();
+            }
+        }
+        throw new IllegalArgumentException();
+
+    }
+
+    private List<Team> getQualifiedForLeague(int idseason, int league) throws SQLException {
         List<Team> res = new ArrayList<>();
-        Map<String, Integer> ps = getPositionsOfSeason(idseason, false);
-        if (league == CHAMPIONS_LEAGUE) {
-            res.add(manager.findTeamById(ps.get(0)));
-            res.add(manager.findTeamById(ps.get(1)));
-            res.add(manager.findTeamById(ps.get(2)));
+        Map<Team, Integer> ps = getPositionsOfSeason(idseason, false);
+        if (league == EmbeddedData.League.SUB_CHAMPIONSLEAGUE) {
+            res.add(getTeamAtPosition(ps, 0));
+            res.add(getTeamAtPosition(ps, 1));
+            res.add(getTeamAtPosition(ps, 2));
         } else {
-            res.add(manager.findTeamById(ps.get(3)));
-            res.add(manager.findTeamById(ps.get(4)));
-            res.add(manager.findTeamById(ps.get(5)));
-            res.add(manager.findTeamById(ps.get(6)));
+            res.add(getTeamAtPosition(ps, 3));
+            res.add(getTeamAtPosition(ps, 4));
+            res.add(getTeamAtPosition(ps, 5));
+            res.add(getTeamAtPosition(ps, 6));
         }
         return res;
     }
 
     public int calculateMoneyForTeamLeagueTable(int idteam, LeagueTable table) throws SQLException {
-        return getPositionForTeams(idteam, table.getIdseason()) * 5;
+
+        if (table.getLeague() == CAMPIONATO) {
+            System.out.println("è camp=");
+            return getPositionForTeams(idteam, table.getIdseason()) * 5;
+        }
+        return -8;
+
     }
 }

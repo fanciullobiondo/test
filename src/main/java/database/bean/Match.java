@@ -6,6 +6,7 @@
 package database.bean;
 
 import client.ApiClient;
+import data.EmbeddedData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,15 +23,24 @@ public class Match extends Entity {
     private int goalHome;
     private int goalAway;
     private int idRound;
+    private int subIdLeague;
 
+    @Override
+    public String toString() {
+        return "Match{" + "idmatch=" + idmatch + ", idTeamHome=" + idTeamHome + ", idTeamAway=" + idTeamAway + ", goalHome=" + goalHome + ", goalAway=" + goalAway + ", idRound=" + idRound + ", subIdLeague=" + subIdLeague + '}';
+    }
 
     public Match() {
-        
+
     }
+
     public Match(ApiClient.RoundMatch rm) {
         this.idmatch = rm.getIdmatch();
+        this.idTeamHome = rm.getHome().getId();
+        this.idTeamAway = rm.getAway().getId();
         this.goalHome = rm.getHome().getGoal();
         this.goalAway = rm.getAway().getGoal();
+        this.subIdLeague = rm.isEuropean() ? (rm.isCl() ? EmbeddedData.League.SUB_CHAMPIONSLEAGUE : EmbeddedData.League.SUB_EUROPALEAGUE) : EmbeddedData.League.SUB_NONE;
     }
 
     @Override
@@ -42,7 +52,16 @@ public class Match extends Entity {
         this.goalHome = rs.getInt(i++);
         this.goalAway = rs.getInt(i++);
         this.idRound = rs.getInt(i++);
+        this.subIdLeague = rs.getInt(i++);
         return this;
+    }
+
+    public int getSubIdLeague() {
+        return subIdLeague;
+    }
+
+    public void setSubIdLeague(int subIdLeague) {
+        this.subIdLeague = subIdLeague;
     }
 
     public int getIdmatch() {
@@ -103,6 +122,7 @@ public class Match extends Entity {
             ps.setInt(i++, bean.goalHome);
             ps.setInt(i++, bean.goalAway);
             ps.setInt(i++, bean.idRound);
+            ps.setInt(i++, bean.subIdLeague);
             return i;
         }
 
@@ -113,17 +133,17 @@ public class Match extends Entity {
 
         @Override
         public String SELECT_HEADER() {
-            return "idmatch,idteamhome,idteamaway,goalhome,goalaway,idround";
+            return "idmatch,idteamhome,idteamaway,goalhome,goalaway,idround,subIdLeague";
         }
 
         @Override
         public String UPDATE() {
-            return "idteamhome=?,idteamaway=?,goalhome=?,goalaway=?,idround=?";
+            return "idteamhome=?,idteamaway=?,goalhome=?,goalaway=?,idround=?,subIdLeague=?";
         }
 
         @Override
         public String INSERT_COUNT_ELEMENTS() {
-            return "idteamhome,idteamaway,goalhome,goalaway,idround";
+            return "idteamhome,idteamaway,goalhome,goalaway,idround,subIdLeague";
         }
 
         @Override
@@ -134,6 +154,7 @@ public class Match extends Entity {
                 + "idteamaway int not null,"
                 + "goalhome int ,"
                 + "goalaway int,"
+                + "subIdLeague int not null,"
                 + "idround int not null)";
 
         }

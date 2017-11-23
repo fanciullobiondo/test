@@ -19,9 +19,6 @@
             label.error {
                 color: red;
             }
-            div.leaguetable {
-                border: 1px solid #000;
-            }
             span.userteam {
                 /*font-color: #0FA0CE;*/
             }
@@ -48,7 +45,41 @@
                 font-size: 1.8rem;
                 color: #999;
                 letter-spacing: normal; }
+            .match-row input {
+                background-color: #ffffcc;
+            }
+            .match-row.camp input {
+                background-color: #ccffcc;
+            }
+            .match-row.euro input {
+                background-color: #ff9999;
+            }
+            .match-row.euro.cl input {
+                background-color: #99ffff;
+            }
+            button[disabled],button:disabled{
+                color: #000;
+                background-color: #e3e3e3;
+                border-color: #e3e3e3; 
+            }
+            .billMatchBox {
+                padding-left: 15px;
+                border-radius: 16px;
+                border:1px solid #ccc!important;
+                max-width: 200px;
+            }
+            .leaguetable {
+                max-width: 400px;
+            }
+            .billMatchBox .winner span{
+                font-weight: 900;
+                color: #0FA0CE;
 
+            }
+            .bill-row {
+                padding-top: 5px;
+                padding-bottom: 5px;
+            }
         </style>
 
         <script src="js/lib/jquery.min.js"></script>
@@ -61,14 +92,13 @@
             <div style="display:none" class="maincontainer">
                 <div class="row">
                     <div class="six columns">
-                        <div> <h4>Giornata {{round.relativeround}} ({{actualRound}} - {{round.season}}) <span class="heading-font-size">{{round.league}}</span></h4>
-
+                        <div> <h4>{{round.relativeround}} <span class="heading-font-size">{{round.league}}, Stagione {{round.season}}, Turno {{actualRound}}</span>
                         </div>
 
                     </div>
                     <div class="one columns">&nbsp;</div>
                     <div class="five columns">
-                        <button ng-click="showPrev()"><</button>&nbsp;<button ng-click="showNext()">></button>&nbsp;<button ng-click="navLabelClick()">{{navLabel}}</button>
+                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showPrev();"><</button>&nbsp;<button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showNext()">></button>&nbsp;<button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;navLabelClick()">{{navLabel}}</button>
                     </div>
                 </div>
 
@@ -82,9 +112,6 @@
                         <tbody>
                             <tr>
                                 <td>Dave Gamache</td>
-                            </tr>
-                            <tr>
-                                <td>Dwayne Johnson</td>
                             </tr>
                         </tbody>
                     </table>
@@ -112,12 +139,12 @@
                 <div ng-show="situation === 'main'"  id="main"  >
                     <form> 
                         <div class="container">
-                            <div class="row matches_{{m.idmatch}} " ng-repeat="m in actualMatches.matches">
+                            <div class="row matches_{{m.idmatch}} "  ng-repeat="m in actualMatches.matches">
 
                                 <div class="one columns">&nbsp;</div>
                                 <div class="one columns">{{actualMatches.played ? m.home.money + '$': ''}}</div>
                                 <div class="one columns">&nbsp;</div>
-                                <div class="six columns">
+                                <div class="six columns match-row" ng-class="{euro: m.european, cl: m.cl, camp: m.campionato}">
                                     <div class="row ">
                                         <div class="three columns"><span ng-class="{userteam: m.home.ofUser, winnerteam: m.away.goal < m.home.goal}" >{{m.home.name}}</span></div>
                                         <div class="six columns">
@@ -134,24 +161,29 @@
                                 <div class="one columns">{{actualMatches.played ? m.away.money + '$': ''}} </div>
                                 <div class="one columns">&nbsp;</div>
 
-
                             </div>
                         </div>
                         <hr>
 
                         <ul class="tab-nav">
                             <li>
-                                <a class="button tab-campionato" href="#one">Campionato</a>
+                                <a class="button tab-Campionato" href="#camp">Campionato</a>
                             </li>
                             <li>
-                                <a class="button tab-coppa" href="#two">Tab 2</a>
+                                <a class="button tab-Coppa" href="#coppa">Coppa</a>
                             </li>
                             <li>
-                                <a class="button" href="#three">Tab 3</a>
+                                <a class="button tab-Turno-europeo" href="#champions">Champions League</a>
+                            </li>
+                            <li>
+                                <a class="button tab-el" href="#euroLeague">Europa League</a>
+                            </li>
+                            <li>
+                                <a class="button" href="#three">Lancia dado</a>
                             </li>
                         </ul>
                         <div class="tab-content">
-                            <div class="tab-pane container" id="one">
+                            <div class="tab-pane container" id="camp">
                                 <table class="u-full-width">
                                     <thead>
                                         <tr>
@@ -181,208 +213,145 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="tab-pane " id="two">
-                                <div class="row">
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="one columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="two columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="one columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
+                            <!--Inizio pane-->
+                            <div class="tab-pane " id="champions">
+                                 <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 0" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                <br>
-                                <div class="row">
-
+                                <div class="row bill-row">
                                     <div class="two columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 1;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
                                     <div class="four columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="two columns">&nbsp;</div>
+                                    <div class="eigth columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 2;index = 0" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                <br>
-                                <div class="row">
-
-                                    <div class="five columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="five columns">&nbsp;</div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 2" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                <br>
-                                <div class="row">
-
+                                <div class="row bill-row">
                                     <div class="two columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 1;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 3" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                  <div class="row bill-row">
+                                    <div class="six columns">&nbsp;</div>
+                                    <div class="six columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 3;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 4" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 1;index = 2" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 5" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
                                     <div class="four columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="two columns">&nbsp;</div>
+                                    <div class="eigth columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 2;index = 1" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                <br>
-                                <div class="row">
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="one columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 6" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
                                     <div class="two columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
-                                    <div class="one columns">&nbsp;</div>
-                                    <div class="two columns leaguetable">
-                                        <div class="row">
-                                            <div class="six columns">Squadra1</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">5</div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="six columns">Squadra2</div>
-                                            <div class="three columns">&nbsp;</div>
-                                            <div class="three columns">1</div>
-                                        </div>
-
-                                    </div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 1;index = 3" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 7" ng-include="'billboardrow.html'"> </div>
                                 </div>
                             </div>
+                            <!--fine pane-->
+                            <div class="tab-pane " id="euroLeague">
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 1;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="four columns">&nbsp;</div>
+                                    <div class="eigth columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 2;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 2" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 1;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 3" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                  <div class="row bill-row">
+                                    <div class="six columns">&nbsp;</div>
+                                    <div class="six columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 3;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 4" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 1;index = 2" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 5" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="four columns">&nbsp;</div>
+                                    <div class="eigth columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 2;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 6" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 1;index = 3" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 7" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                            </div>
+
+                            <!--inizio pane-->
+                            <div class="tab-pane " id="coppa">
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 0;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 1;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 0;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="four columns">&nbsp;</div>
+                                    <div class="eigth columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 2;index = 0" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 0;index = 2" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="two columns">&nbsp;</div>
+                                    <div class="ten columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 1;index = 1" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                                <div class="row bill-row">
+                                    <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCo;row = 0;index = 3" ng-include="'billboardrow.html'"> </div>
+                                </div>
+                            </div>
+
 
 
                             <div class="tab-pane" id="three">Lancia dado</div>

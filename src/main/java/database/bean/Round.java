@@ -73,6 +73,7 @@ public class Round extends Entity {
         this.played = played;
     }
 
+
     public static QueryBuilder<Round> builder = new QueryBuilder<Round>() {
 
         @Override

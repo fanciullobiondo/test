@@ -13,7 +13,7 @@ import java.util.List;
  *
  * @author nicolo.boschi
  */
-public class LeagueTable {
+public class LeagueTable extends Table {
 
     public static Comparator<LeagueTableRow> compare = new Comparator<LeagueTableRow>() {
         @Override
@@ -34,16 +34,6 @@ public class LeagueTable {
 
     List<LeagueTableRow> rows = new ArrayList<>();
 
-    int idseason;
-
-    public int getIdseason() {
-        return idseason;
-    }
-
-    public void setIdseason(int idseason) {
-        this.idseason = idseason;
-    }
-    
     public List<LeagueTableRow> getRows() {
         return rows;
     }
@@ -59,8 +49,9 @@ public class LeagueTable {
 
     public static class LeagueTableRow {
 
-        public LeagueTableRow(String teamName, int win, int draw, int lose, int gf, int gs) {
+        public LeagueTableRow(String teamName, int teamId, int win, int draw, int lose, int gf, int gs) {
             this.teamName = teamName;
+            this.teamId = teamId;
             this.win = win;
             this.draw = draw;
             this.lose = lose;
@@ -72,6 +63,7 @@ public class LeagueTable {
         }
 
         private String teamName;
+        private int teamId;
         private int played;
         private int win;
         private int draw;
@@ -80,6 +72,15 @@ public class LeagueTable {
         private int gs;
         private int dg;
         private int point;
+
+        public int getTeamId() {
+            return teamId;
+        }
+
+        public void setTeamId(int teamId) {
+            this.teamId = teamId;
+        }
+        
 
         public int getPlayed() {
             return played;

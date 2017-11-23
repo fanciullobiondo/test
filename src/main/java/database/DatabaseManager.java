@@ -5,6 +5,8 @@
  */
 package database;
 
+import data.BillboardTable;
+import data.EmbeddedData;
 import data.LeagueTable;
 import database.bean.Entity;
 import database.bean.GameMetadata;
@@ -13,6 +15,8 @@ import database.bean.QueryBuilder;
 import database.bean.Round;
 import database.bean.Season;
 import database.bean.Team;
+import engine.SeasonCalculator;
+import engine.SeasonCalculator.SingleMatch;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
@@ -22,12 +26,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -53,27 +55,21 @@ public class DatabaseManager {
             return -1;
         }
         int idSeason = queryEntity.get(0).getIdSeason();
+        int league = queryEntity.get(0).getLeague();
 
         try (Connection con = openConnection();) {
             try (PreparedStatement psMatch = con
-                .prepareStatement("Select distinct idround from " + Match.builder.TABLE() + " where idround IN "
-                    + "(select idround from " + Round.builder.TABLE() + " where idseason = ? ) "
-                    + " order by idround")) {
+                .prepareStatement("Select count(*) from " + Round.builder.TABLE() + " where idseason = ?"
+                    + " and idround < ? and league = ?")) {
                 psMatch.setInt(1, idSeason);
-                int count = 1;
+                psMatch.setInt(2, idround);
+                psMatch.setInt(3, league);
                 try (ResultSet rs = psMatch.executeQuery();) {
-                    while (rs.next()) {
-                        if (rs.getInt(1) == idround) {
-                            return count;
-                        }
-                        count++;
-                    }
+                    return rs.getInt(1);
                 }
 
             }
         }
-        return -1;
-
     }
 
     public Team findTeamById(int id) throws SQLException {
@@ -138,6 +134,61 @@ public class DatabaseManager {
         }
     }
 
+    public void adjustRoundMatches(List<SeasonCalculator.SingleMatch> matches, int idround, int subleague) throws SQLException {
+        System.out.println("adjustRoundMatches " + matches);
+        try (Connection con = openConnection();) {
+            try (PreparedStatement psMatch
+                = con.prepareStatement("Update " + Match.builder.TABLE() + " set idteamhome=?,idteamaway=? "
+                    + " where idmatch=?");
+                PreparedStatement psToRemove
+                = con.prepareStatement("Select idmatch from " + Match.builder.TABLE() + " "
+                    + " where idteamhome=? and idround=? and subIdLeague=?");) {
+
+                psToRemove.setInt(1, SeasonCalculator.NO_REAL_TEAM);
+                psToRemove.setInt(2, idround);
+                psToRemove.setInt(3, subleague);
+                List<Integer> allMatches = new ArrayList<>();
+                try (ResultSet rs = psToRemove.executeQuery();) {
+                    while (rs.next()) {
+                        allMatches.add(rs.getInt(1));
+                    }
+                }
+                if (allMatches.size() < matches.size()) {
+                    throw new IllegalStateException("Ci sono " + allMatches.size() + " posti ma ne vuoi mettere " + matches.size());
+                }
+
+                int c = 0;
+                for (SingleMatch matche : matches) {
+                    psMatch.setInt(1, matche.getHomeTeam());
+                    psMatch.setInt(2, matche.getAwayTeam());
+                    psMatch.setInt(3, allMatches.get(c));
+                    psMatch.executeUpdate();
+                    c++;
+                }
+            }
+        }
+    }
+
+    public int getNextRound(int idround) throws SQLException {
+        String query = "Select idround from " + Round.builder.TABLE() + " "
+            + "where played=0 and idround <> ? and league = (Select league "
+            + "from " + Round.builder.TABLE() + " where idround=?) order by idround asc LIMIT 1";
+        try (Connection con = openConnection();
+            PreparedStatement allTeams = con.prepareStatement(query);) {
+            allTeams.setInt(1, idround);
+            allTeams.setInt(2, idround);
+            try (ResultSet rs = allTeams.executeQuery();) {
+                while (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return -1;
+            }
+
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
+    }
+
     public int getActualRound() throws SQLException {
         String query = "Select idround from " + Round.builder.TABLE() + " where played=0 order by idround asc LIMIT 1";
         try (Connection con = openConnection();
@@ -155,9 +206,87 @@ public class DatabaseManager {
         }
     }
 
+    public BillboardTable calculateBillboard(int idseason, int idleague, int subleague) throws SQLException {
+        if (idleague == EmbeddedData.League.CAMPIONATO) {
+            throw new IllegalArgumentException();
+        }
+        BillboardTable table = new BillboardTable();
+//
+        if (idleague == EmbeddedData.League.COPPA) {
+            table.setTotalRounds(3);
+        } else {
+            table.setTotalRounds(4);
+        }
+        List<Match> matches = new ArrayList<>();
+        List<Round> rounds = new ArrayList<>();
+
+        try (Connection con = openConnection();
+            PreparedStatement allMatch = con.prepareStatement("Select " + Match.builder.SELECT_HEADER()
+                + " from " + Match.builder.TABLE() + " where idround = ? and subIdLeague=? ");
+            PreparedStatement allRound = con.prepareStatement("Select " + Round.builder.SELECT_HEADER()
+                + " from " + Round.builder.TABLE() + " where  idseason=? and league=? and played=1 "
+                + "");) {
+
+            allRound.setInt(1, idseason);
+            allRound.setInt(2, idleague);
+            try (ResultSet rs = allRound.executeQuery();) {
+                while (rs.next()) {
+                    rounds.add(new Round().fromResultSet(rs));
+                }
+            }
+            table.setPlayedRounds(rounds.size());
+            if (rounds.isEmpty()) {
+                try (PreparedStatement firstRound = con.prepareStatement("Select " + Round.builder.SELECT_HEADER()
+                    + " from " + Round.builder.TABLE() + " where  idseason=? and league=? and played=0 order by idround LIMIT 1  "
+                    + "");) {
+                    firstRound.setInt(1, idseason);
+                    firstRound.setInt(2, idleague);
+                    try (ResultSet rs = firstRound.executeQuery();) {
+                        while (rs.next()) {
+                            rounds.add(new Round().fromResultSet(rs));
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            for (Round r : rounds) {
+                allMatch.setInt(1, r.getIdRound());
+                allMatch.setInt(2, subleague);
+
+                try (ResultSet rs = allMatch.executeQuery();) {
+                    while (rs.next()) {
+                        matches.add(new Match().fromResultSet(rs));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
+        
+        for (Round r : rounds) {
+            List<BillboardTable.BillBoardMatch> billMatches = new ArrayList<>();
+            for (Match matche : matches) {
+                if (matche.getIdRound() == r.getIdRound()) {
+                    billMatches.add(new BillboardTable.BillBoardMatch(findTeamById(matche.getIdTeamHome()).getName(),
+                        findTeamById(matche.getIdTeamAway()).getName(), matche.getGoalHome(), matche.getGoalAway()));
+                }
+            }
+            table.getMatches().put(getRelativeRoundIndex(r.getIdRound()), billMatches);
+
+        }
+        return table;
+
+    }
+
     public LeagueTable calculateLeagueTable(int idseason, int idleague) throws SQLException {
+        if (idleague != EmbeddedData.League.CAMPIONATO) {
+            throw new IllegalArgumentException();
+        }
         LeagueTable table = new LeagueTable();
         table.setIdseason(idseason);
+        table.setLeague(idleague);
         String queryHomeGoal = "select "
             + "(SUM(case when goalhome > goalaway THEN 1 ELSE 0 END)) as win, "
             + "(SUM(case when goalhome = goalaway THEN 1 ELSE 0 END)) as draw, "
@@ -180,9 +309,9 @@ public class DatabaseManager {
             + "from round "
             + "where idseason=? and league=? and played=1) and idteamaway=? ";
 
-        String queryAll = "select idteamhome,idteamaway "
-            + "from match "
-            + "where idround in (select idround from round where idseason=? and league=? and played=1)";
+        String queryAll = "select idteam "
+            + "from team "
+            + "where league=?";
 
         try (Connection con = openConnection();
             PreparedStatement psHome = con.prepareStatement(queryHomeGoal);
@@ -190,8 +319,7 @@ public class DatabaseManager {
             PreparedStatement allTeams = con.prepareStatement(queryAll);) {
 
             Set<Integer> teams = new HashSet<>();
-            allTeams.setInt(1, idseason);
-            allTeams.setInt(2, idleague);
+            allTeams.setInt(1, idleague);
 
             psAway.setInt(1, idseason);
             psAway.setInt(2, idleague);
@@ -202,9 +330,10 @@ public class DatabaseManager {
             try (ResultSet rs = allTeams.executeQuery();) {
                 while (rs.next()) {
                     teams.add(rs.getInt(1));
-                    teams.add(rs.getInt(2));
                 }
             }
+
+            boolean isFirstRound = true;
             for (Integer team : teams) {
                 int win = 0;
                 int draw = 0;
@@ -231,8 +360,10 @@ public class DatabaseManager {
                         gs += rs.getInt("gs");
                     }
                 }
-
-                table.getRows().add(new LeagueTable.LeagueTableRow(findTeamById(team).getName(), win, draw, lose, gf, gs));
+                if (isFirstRound && (win > 0 || draw > 0 || lose > 0)) {
+                    isFirstRound = false;
+                }
+                table.getRows().add(new LeagueTable.LeagueTableRow(findTeamById(team).getName(), team, win, draw, lose, gf, gs));
             }
 
         } catch (Exception e) {
@@ -244,17 +375,21 @@ public class DatabaseManager {
 
     }
 
-    public List<Team> getTeamsForLeague(int n, int league) throws SQLException {
+    public List<Team> getTeamsForLeague(int n, int league, int subleague) throws SQLException {
         List<Team> result = new ArrayList<>();
         try (Connection con = openConnection();
             PreparedStatement ps = con.prepareStatement("select " + Team.builder.SELECT_HEADER() + " from " + Team.builder.TABLE()
-                + " where idleague = ? and ofuser = 0 limit " + n);) {
+                + " where league = ? and subleague = ? and ofuser = 0 limit " + n);) {
             ps.setInt(1, league);
+            ps.setInt(2, subleague);
             try (ResultSet rs = ps.executeQuery();) {
-
                 while (rs.next()) {
                     result.add(new Team().fromResultSet(rs));
                 }
+            }
+
+            if (n != result.size()) {
+                throw new IllegalStateException("ne volevo " + n + " me ne darebbe " + result.size());
             }
             return result;
         } catch (Exception e) {

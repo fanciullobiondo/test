@@ -1,12 +1,14 @@
 package client;
 
+import data.BillboardTable;
 import data.EmbeddedData;
 import data.EmbeddedData.League;
+import static data.EmbeddedData.League.CAMPIONATO;
 import data.LeagueTable;
 import database.bean.Match;
-import database.bean.Round;
 import engine.Engine;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,12 +40,24 @@ public class ApiClient {
 
     private Map<Integer, LeagueTable> leagueCache = new HashMap<>();
 
+    private Map<Integer, BillboardTable> billboardCache = new HashMap<>();
+
     private LeagueTable getLeagueTable(int idround) throws SQLException {
         LeagueTable get = leagueCache.get(idround);
         if (get == null) {
-            get = getManager().calculateLeagueTable(idround, League.CAMPIONATO);
+            get = getManager().calculateLeagueTable(idround);
             leagueCache.put(idround, get);
         }
+        return get;
+
+    }
+
+    private BillboardTable getBillboardTable(int idround, int idleague, int subleague) throws SQLException {
+        BillboardTable get = billboardCache.get(idround);
+//        if (get == null) {
+        get = getManager().calculateBillboard(idround, idleague, subleague);
+//            billboardCache.put(idround, get);
+//        }
         return get;
 
     }
@@ -70,14 +84,25 @@ public class ApiClient {
     @GET
     @Path("/round")
     public Map<String, Object> getRoundInfo(@QueryParam("idround") int idround) throws SQLException, NamingException {
+        System.out.println("chiedo idround= " + idround);
         List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
         if (roundMatches == null) {
             // round non esiste
             return error("round non esiste");
         }
+        Collections.sort(roundMatches, (o1, o2) -> {
+            return o1.isCl() ? 1 : -1;
+        });
+
+        BillboardTable bill = getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
+        System.out.println("bill:" + bill);
         Map<String, Object> simpleResult = simpleResult(roundMatches);
         simpleResult.put("played", getManager().isRoundPlayed(idround));
         simpleResult.put("table", getLeagueTable(idround));
+        simpleResult.put("billboardCh", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE));
+        simpleResult.put("billboardEl", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE));
+        simpleResult.put("billboardCo", getBillboardTable(idround, EmbeddedData.League.COPPA, EmbeddedData.League.SUB_NONE));
+        simpleResult.put("round", getManager().getRoundInfo(idround));
         return simpleResult;
     }
 
@@ -86,12 +111,8 @@ public class ApiClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
     public Map<String, Object> postteamchooser(Map<String, Object> content) throws SQLException, NamingException {
-        System.out.println("passed" + content);
 
         List<String> selected = (List<String>) content.get("selected");
-        System.out.println(content.getClass());
-        System.out.println(selected);
-        System.out.println(content.get("selected").getClass());
 
         if (selected.size() > 8 || selected.size() < 1) {
             return error("i giocatori devono essere da 1 a 8");
@@ -111,8 +132,6 @@ public class ApiClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
     public Map<String, Object> postround(Map<String, Object> content) throws SQLException, NamingException {
-        System.out.println("passed postround " + content);
-
         List<?> matches = (List<?>) content.get("matches");
         Integer idround = (Integer) content.get("idround");
 
@@ -128,7 +147,11 @@ public class ApiClient {
     @GET
     @Path("/teamchooser")
     public Map<String, Object> teamchooser() throws SQLException, NamingException {
-        return simpleResult(EmbeddedData.ALL_TEAMS.keySet());
+        return simpleResult(EmbeddedData.ALL_TEAMS.values()
+            .stream()
+            .filter(t -> t.getLeague().getId() == CAMPIONATO)
+            .map(t -> t.getName())
+            .collect(Collectors.toList()));
     }
 
     @POST
@@ -165,6 +188,8 @@ public class ApiClient {
             rm.setIdmatch((Integer) map.get("idmatch"));
             rm.setHome(TeamResult.wrap((Map) map.get("home")));
             rm.setAway(TeamResult.wrap((Map) map.get("away")));
+            rm.setEuropean((Boolean) map.get("european"));
+            rm.setCl((Boolean) map.get("cl"));
             return rm;
         }
 
@@ -172,6 +197,33 @@ public class ApiClient {
         private TeamResult home;
         private TeamResult away;
         private boolean editable;
+        private boolean campionato;
+        private boolean european;
+        private boolean cl;
+
+        public boolean isCampionato() {
+            return campionato;
+        }
+
+        public void setCampionato(boolean campionato) {
+            this.campionato = campionato;
+        }
+
+        public boolean isEuropean() {
+            return european;
+        }
+
+        public void setEuropean(boolean european) {
+            this.european = european;
+        }
+
+        public boolean isCl() {
+            return cl;
+        }
+
+        public void setCl(boolean cl) {
+            this.cl = cl;
+        }
 
         public boolean isEditable() {
             return editable;
@@ -221,10 +273,11 @@ public class ApiClient {
         public static class TeamResult {
 
             public static TeamResult wrap(Map<?, ?> map) {
-                return new TeamResult((Integer) map.get("goal"));
+                return new TeamResult((Integer) map.get("id"), (Integer) map.get("goal"));
             }
 
-            public TeamResult(int goal) {
+            public TeamResult(int id, int goal) {
+                this.id = id;
                 this.goal = goal;
             }
 
