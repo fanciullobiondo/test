@@ -38,7 +38,7 @@ import static data.EmbeddedData.League.EUROPA;
  */
 public class Engine {
 
-    private final DatabaseManager manager;
+    private DatabaseManager manager;
 
     public static final int CAMPIONATO_N_TEAMS = 8;
     public static final int EUROPA_LEAGUE_N_TEAMS = 16;
@@ -64,9 +64,19 @@ public class Engine {
         EUROPA
     ));
 
+    public Engine() {
+    }
+
+
+    public String getDatabasesPath() {
+        return manager.getDatabasePath();
+    }
     public Engine(DatabaseManager manager) throws SQLException {
         this.manager = manager;
-        manager.initDatabase();
+    }
+
+    public boolean startDatabase(String name) throws SQLException {
+        return manager.initDatabase(name);
     }
 
     public static class MatchResult {
@@ -117,11 +127,6 @@ public class Engine {
 
         }
 
-        System.out.println("Inizialmente passati " + passed.size());
-        for (Match match : passed) {
-            System.out.println("sm: " + match);
-
-        }
         Round theRound = manager.queryEntity(Round.class, WhereClause.instance().field("idround", "="), idround).get(0);
         if (theRound == null) {
             throw new BadRequestException("round not exists");
@@ -130,7 +135,6 @@ public class Engine {
             throw new BadRequestException("round already played");
         }
         List<Match> allMatchToSimulate = manager.getAllMatchToSimulate(idround);
-        System.out.println("allM" + allMatchToSimulate);
 
         for (Match simulated : allMatchToSimulate) {
             MatchResult rs = simulateMatch(manager.findTeamById(simulated.getIdTeamHome()),
@@ -143,11 +147,6 @@ public class Engine {
                     break;
                 }
             }
-        }
-        System.out.println("poi passati " + passed.size());
-        for (Match match : passed) {
-            System.out.println("sm: " + match);
-
         }
 
         manager.updateRound(passed, idround);
@@ -172,11 +171,6 @@ public class Engine {
     }
 
     private static List<Integer> extractWinners(List<Match> m) {
-        System.out.println("estraggo  " + m.size());
-        for (Match match : m) {
-            System.out.println("sm: " + match);
-
-        }
         return m.stream()
             .map((t) -> {
                 int h = t.getGoalHome();
@@ -192,10 +186,8 @@ public class Engine {
 
     private void adjust(List<Integer> ids, int idround, int subleague) throws SQLException {
         SeasonCalculator seasonCalculator = new SeasonCalculator(null);
-        System.out.println("passo" + ids);
         seasonCalculator.calculateRound(ids, 0, true);
         Map<Integer, List<SingleMatch>> res = seasonCalculator.getResult();
-        System.out.println("result " + res);
         manager.adjustRoundMatches(res.get(0), idround, subleague);
     }
 
@@ -231,7 +223,6 @@ public class Engine {
                 teamAway.getName(), matche.getGoalAway(), teamAway.isOfuser()));
             roundMatch.setEditable(teamHome.isOfuser() || teamAway.isOfuser());
             if (league != null) {
-                System.out.println("chiedo solo team= " + teamAway.getIdteam());
                 roundMatch.setMoneyHome(calculateMoneyForTeamLeagueTable(teamAway.getIdteam(), league));
                 roundMatch.setMoneyAway(calculateMoneyForTeamLeagueTable(teamHome.getIdteam(), league));
             } else {
@@ -411,7 +402,6 @@ public class Engine {
                     .field("league", "="), EUROPA);
 
             allTeamsByLeague.put(EmbeddedData.League.EUROPA, eulTeams);
-            System.out.println("Ciao" + eulTeams.size());
         } else {
             List<Team> cpuTeams = manager.getTeamsForLeague(EUROPA_LEAGUE_CPU_TEAMS, EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE);
             List<Team> eut = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_EUROPALEAGUE);
@@ -429,7 +419,6 @@ public class Engine {
             }
             cpuTeams.addAll(t);
             allTeamsByLeague.put(EUROPA, cpuTeams);
-            System.out.println("Ciao" + cpuTeams.size());
 
         }
 
@@ -448,11 +437,9 @@ public class Engine {
             leagueRounds.get(league).add(key);
         }
 
-        System.out.println(leagueRounds);
 
         Map<Integer, List<SeasonCalculator.SingleMatch>> sortedRound = new LinkedHashMap<>();
         for (Integer idleague : MATCHES_PATTERN) {
-            System.out.println(idleague);
             if (leagueRounds.get(idleague).isEmpty()) {
                 throw new IllegalStateException("impposbile");
             }
@@ -484,10 +471,6 @@ public class Engine {
     }
 
     public int getPositionForTeams(int idteam, int idseason) throws SQLException {
-        System.out.println(getPositionsOfSeason(idseason, true));
-        System.out.println("getTeam" + idteam);
-        System.out.println("getTeam" + manager
-                .findTeamById(idteam));
         return getPositionsOfSeason(idseason, true)
             .get(manager
                 .findTeamById(idteam));
@@ -536,7 +519,6 @@ public class Engine {
     public int calculateMoneyForTeamLeagueTable(int idteam, LeagueTable table) throws SQLException {
 
         if (table.getLeague() == CAMPIONATO) {
-            System.out.println("è camp=");
             return getPositionForTeams(idteam, table.getIdseason()) * 5;
         }
         return -8;

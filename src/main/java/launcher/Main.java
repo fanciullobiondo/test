@@ -1,5 +1,6 @@
 package launcher;
 
+import utils.FileUtils;
 import database.DatabaseManager;
 import engine.Engine;
 import java.io.IOException;
@@ -16,8 +17,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         int port = 8097;
 
-//        String databasePath = System.getenv("HOME") + "/";
-        String databasePath = "";
+        String databasePath = System.getenv("HOME") + "/footballgame/.databases/";
+        
         if (args.length >= 1) {
             port = Integer.parseInt(args[0]);
         }
@@ -33,8 +34,7 @@ public class Main {
 
         // nuova partita
         // creo db col nome dato o lo apro
-        DatabaseManager manager = new DatabaseManager(databasePath, "esempio 1 oggi");
-
+        DatabaseManager manager = new DatabaseManager(databasePath);
 
         engine.Engine engine = new Engine(manager);
 //        engine.insertTeams(EmbeddedData.ALL_TEAMS.values()
@@ -48,9 +48,6 @@ public class Main {
 //        System.out.println("news" + newSeason);
 //        System.out.println(manager.getRelativeRoundIndex(newSeason));
 //        System.out.println(manager.getRelativeRoundIndex(newSeason+1));
-
-
-
 
         try {
             tomcat.start(port, engine);

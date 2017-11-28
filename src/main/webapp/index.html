@@ -9,6 +9,9 @@
             body {
                 padding: 2% 4% 2% 4%;
             }
+            table.databases tr:hover{
+                background-color: #ccc;
+            }
             input.input-result {
                 height: 23px;
                 max-width: 50px;
@@ -20,7 +23,7 @@
                 color: red;
             }
             span.userteam {
-                /*font-color: #0FA0CE;*/
+                color: #0FA0CE;
             }
             span.winnerteam {
                 font-weight: bold;
@@ -41,6 +44,17 @@
                 -webkit-appearance: none;
                 margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
             }
+            .match-row.camp input.invisible,
+            .match-row.euro.cl input.invisible,
+            .match-row.euro input.invisible,
+            .match-row.camp input.invisible
+            {
+                background-color: #ffffff;
+                color: #fff;
+                border: none;
+                cursor: default;
+            }
+
             .heading-font-size {
                 font-size: 1.8rem;
                 color: #999;
@@ -103,15 +117,15 @@
                 </div>
 
                 <div ng-show="situation === 'start'"  id="start" >
-                    <table class="u-full-width">
+                    <table class="u-full-width databases">
                         <thead>
                             <tr>
                                 <th>Database name</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Dave Gamache</td>
+                            <tr ng-repeat="db in databases">
+                                <td ng-click="chooseDatabase(db)">{{db}}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -149,9 +163,9 @@
                                         <div class="three columns"><span ng-class="{userteam: m.home.ofUser, winnerteam: m.away.goal < m.home.goal}" >{{m.home.name}}</span></div>
                                         <div class="six columns">
                                             <div class="row ">
-                                                <div class="five columns"> <input ng-readonly="!m.editable || actualMatches.played" type="number" min="0" class="input-result " ng-model="m.home.goal"></div>
+                                                <div class="five columns"> <input ng-class="{invisible : !m.away.ofUser && !m.home.ofUser && !actualMatches.played}" ng-readonly="!m.editable || actualMatches.played" type="number" min="0" class="input-result " ng-model="m.home.goal"></div>
                                                 <div class="two columns">:</div>
-                                                <div class="five columns"> <input ng-readonly="!m.editable || actualMatches.played" type="number" min="0" class="input-result " ng-model="m.away.goal"></div>
+                                                <div class="five columns"> <input ng-class="{invisible : !m.away.ofUser && !m.home.ofUser && !actualMatches.played}" ng-readonly="!m.editable || actualMatches.played" type="number" min="0" class="input-result " ng-model="m.away.goal"></div>
                                             </div>
                                         </div>
                                         <div class="three columns"><span ng-class="{userteam: m.away.ofUser, winnerteam: m.away.goal > m.home.goal}" >{{m.away.name}}</span></div>
@@ -215,7 +229,7 @@
                             </div>
                             <!--Inizio pane-->
                             <div class="tab-pane " id="champions">
-                                 <div class="row bill-row">
+                                <div class="row bill-row">
                                     <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 0" ng-include="'billboardrow.html'"> </div>
                                 </div>
                                 <div class="row bill-row">
@@ -239,7 +253,7 @@
                                 <div class="row bill-row">
                                     <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 0;index = 3" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                  <div class="row bill-row">
+                                <div class="row bill-row">
                                     <div class="six columns">&nbsp;</div>
                                     <div class="six columns leaguetable" ng-if="true" onload="passed = billboardCl;row = 3;index = 0" ng-include="'billboardrow.html'"> </div>
                                 </div>
@@ -294,7 +308,7 @@
                                 <div class="row bill-row">
                                     <div class="twelve columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 0;index = 3" ng-include="'billboardrow.html'"> </div>
                                 </div>
-                                  <div class="row bill-row">
+                                <div class="row bill-row">
                                     <div class="six columns">&nbsp;</div>
                                     <div class="six columns leaguetable" ng-if="true" onload="passed = billboardEl;row = 3;index = 0" ng-include="'billboardrow.html'"> </div>
                                 </div>

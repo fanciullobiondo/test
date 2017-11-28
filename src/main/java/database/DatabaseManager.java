@@ -38,15 +38,14 @@ import java.util.Set;
 public class DatabaseManager {
 
     private final String databasePath;
-    private final String databaseName;
+    private String databaseName;
 
-    private String sanitifyName(String name) {
-        return name.replaceAll("[^0-9a-zA-Z]+", "").toLowerCase() + ".db";
+    public DatabaseManager(String databasePath) {
+        this.databasePath = databasePath;
     }
 
-    public DatabaseManager(String databasePath, final String databaseName) {
-        this.databasePath = databasePath;
-        this.databaseName = sanitifyName(databaseName);
+    public String getDatabasePath() {
+        return databasePath;
     }
 
     public int getRelativeRoundIndex(int idround) throws SQLException {
@@ -135,7 +134,6 @@ public class DatabaseManager {
     }
 
     public void adjustRoundMatches(List<SeasonCalculator.SingleMatch> matches, int idround, int subleague) throws SQLException {
-        System.out.println("adjustRoundMatches " + matches);
         try (Connection con = openConnection();) {
             try (PreparedStatement psMatch
                 = con.prepareStatement("Update " + Match.builder.TABLE() + " set idteamhome=?,idteamaway=? "
@@ -249,7 +247,7 @@ public class DatabaseManager {
                     }
                 }
             }
-            
+
             for (Round r : rounds) {
                 allMatch.setInt(1, r.getIdRound());
                 allMatch.setInt(2, subleague);
@@ -264,7 +262,7 @@ public class DatabaseManager {
         } catch (Exception e) {
             throw new SQLException(e);
         }
-        
+
         for (Round r : rounds) {
             List<BillboardTable.BillBoardMatch> billMatches = new ArrayList<>();
             for (Match matche : matches) {
@@ -471,13 +469,15 @@ public class DatabaseManager {
         return DriverManager.getConnection("jdbc:sqlite:" + databasePath + databaseName);
     }
 
-    public void initDatabase() throws SQLException {
+    public boolean initDatabase(String dbname) throws SQLException {
+        databaseName = dbname;
         File file = new File(databasePath + databaseName);
+        System.out.println("initDatabase at" + file.getAbsolutePath());
 
         if (file.exists()) {
-            //System.out.print("Database already exists!");
-            //return;
-            file.delete();
+            System.out.print("Database already exists!");
+            return true;
+//            file.delete();
         }
 
         try (Connection c = openConnection();) {
@@ -495,6 +495,7 @@ public class DatabaseManager {
             c.setAutoCommit(true);
         }
         System.out.println("OK!");
+        return false;
 
     }
 

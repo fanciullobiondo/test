@@ -17,6 +17,10 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
         $scope.actualRound--;
         refresh(true);
     };
+    $scope.chooseDatabase = function (db) {
+        $scope.selecteddb = db;
+        postDB();
+    };
 
     function actual() {
         get('actual', function (r) {
@@ -27,7 +31,9 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 console.log(r)
                 angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
             } else {
+                console.log('actual')
                 $scope.situation = 'start';
+                $scope.databases = r.simple || $scope.databases;
             }
         });
     }
@@ -35,16 +41,26 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
     refresh();
     angular.element(window.document).find('.maincontainer').fadeIn(300);
 
+    function postDB() {
+        post('postdbchooser', postRequestContent({selected: $scope.selecteddb || "0"}), function (r) {
+            console.log(r.simple)
+            console.log('qui' , $scope.situation)
+            $scope.situation = r.simple ? 'main' : 'teamchooser';
+            console.log('qui' , $scope.situation)
+            refresh(!r.simple);
+        });
+    }
+
 
     function refresh(skipactual) {
         if (!skipactual) {
             actual();
         }
+        console.log('REF', $scope)
         if ($scope.situation === 'start') {
-            $scope.navLabel = "Nuova stagione";
+            $scope.navLabel = "Nuovo gioco";
             $scope.navLabelClick = function () {
-                $scope.situation = 'teamchooser';
-                refresh(true);
+                postDB();
             };
         } else if ($scope.situation === 'teamchooser') {
             get('teamchooser', function (r) {
@@ -55,7 +71,6 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                         if (!r.ok) {
                             $scope.teamchooserError = r.error;
                         } else {
-                            $scope.teamchooserError = 'ok';
                             $scope.situation = 'main';
                             $scope.actualRound = r.simple;
                             refresh();
@@ -101,15 +116,9 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
         }
 
     }
-    $scope.getCoGoal = function (r, index, home) {
-        if (!$scope.billboardCo) {
-            return "-";
-        }
-        return $scope.getBillboardGoal($scope.billboardCo, r, index, home);
-    };
 
     $scope.getBillboardGoal = function (cal, r, index, home) {
-        return cal.playedRounds > r ? (home ? cal.matches[r][index].goalHome : cal.matches[r][index].goalAway) : '-';
+        return cal && cal.playedRounds > r ? (home ? cal.matches[r][index].goalHome : cal.matches[r][index].goalAway) : '-';
     };
     $scope.getNumber = function (num) {
         return new Array(num);

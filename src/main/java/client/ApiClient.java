@@ -7,7 +7,10 @@ import static data.EmbeddedData.League.CAMPIONATO;
 import data.LeagueTable;
 import database.bean.Match;
 import engine.Engine;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,6 +30,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.QueryParam;
 import tomcat.TomcatManager;
+import utils.FileUtils;
 
 @Path("api")
 @Produces(MediaType.APPLICATION_JSON)
@@ -76,15 +80,21 @@ public class ApiClient {
 
     @GET
     @Path("/actual")
-    public Map<String, Object> actual() throws SQLException, NamingException {
-        int idround = getManager().getActualRound();
-        return simpleResult(getManager().getRoundInfo(idround));
+    public Map<String, Object> actual() throws SQLException, NamingException, IOException {
+        try {
+            int idround = getManager().getActualRound();
+            if (idround <= 0) {
+                return simpleResult(FileUtils.readExistingDatabases(getManager().getDatabasesPath()));
+            }
+            return simpleResult(getManager().getRoundInfo(idround));
+        } catch (SQLException e) {
+            return simpleResult(FileUtils.readExistingDatabases(getManager().getDatabasesPath()));
+        }
     }
 
     @GET
     @Path("/round")
     public Map<String, Object> getRoundInfo(@QueryParam("idround") int idround) throws SQLException, NamingException {
-        System.out.println("chiedo idround= " + idround);
         List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
         if (roundMatches == null) {
             // round non esiste
@@ -95,7 +105,6 @@ public class ApiClient {
         });
 
         BillboardTable bill = getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
-        System.out.println("bill:" + bill);
         Map<String, Object> simpleResult = simpleResult(roundMatches);
         simpleResult.put("played", getManager().isRoundPlayed(idround));
         simpleResult.put("table", getLeagueTable(idround));
@@ -104,6 +113,19 @@ public class ApiClient {
         simpleResult.put("billboardCo", getBillboardTable(idround, EmbeddedData.League.COPPA, EmbeddedData.League.SUB_NONE));
         simpleResult.put("round", getManager().getRoundInfo(idround));
         return simpleResult;
+    }
+
+    @POST
+    @Path("/postdbchooser")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> postdbchooser(Map<String, Object> content) throws SQLException, NamingException {
+        String selected = (String) content.get("selected");
+        if (selected.equals("0")) {
+            SimpleDateFormat smf = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss");
+            selected = "game_" + smf.format(new Timestamp(System.currentTimeMillis())) + ".db";
+        }
+        return simpleResult(getManager().startDatabase(selected));
     }
 
     @POST
