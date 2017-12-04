@@ -95,7 +95,7 @@ public class Engine {
         MatchResult r = new MatchResult();
         while (r.goalhome == r.goalaway) {
             int goalHome = simulateDice(home.getAttack()) - simulateDice(away.getDefence());
-            int goalAway = simulateDice(away.getAttack()) - simulateDice(home.getDefence());;
+            int goalAway = simulateDice(away.getAttack()) - simulateDice(home.getDefence());
             r.goalhome = goalHome > 0 ? goalHome : 0;
             r.goalaway = goalAway > 0 ? goalAway : 0;
             if (canDraw) {
@@ -134,7 +134,19 @@ public class Engine {
         if (theRound.isPlayed()) {
             throw new BadRequestException("round already played");
         }
+
         List<Match> allMatchToSimulate = manager.getAllMatchToSimulate(idround);
+        if (theRound.getLeague() != CAMPIONATO) {
+            System.out.println("passed= " + passed);
+            System.out.println("all" + allMatchToSimulate) ;
+            boolean anyMatch = passed.stream().anyMatch(m -> m.getGoalAway() == m.getGoalHome() && !allMatchToSimulate.contains(m));
+            if (anyMatch) {
+                throw new BadRequestException("Non puoi inserire pareggi.");
+            }
+        }
+
+
+        
 
         for (Match simulated : allMatchToSimulate) {
             MatchResult rs = simulateMatch(manager.findTeamById(simulated.getIdTeamHome()),

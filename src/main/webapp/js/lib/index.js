@@ -44,9 +44,9 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
     function postDB() {
         post('postdbchooser', postRequestContent({selected: $scope.selecteddb || "0"}), function (r) {
             console.log(r.simple)
-            console.log('qui' , $scope.situation)
+            console.log('qui', $scope.situation)
             $scope.situation = r.simple ? 'main' : 'teamchooser';
-            console.log('qui' , $scope.situation)
+            console.log('qui', $scope.situation)
             refresh(!r.simple);
         });
     }
@@ -101,7 +101,14 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                         post('postround',
                                 postRequestContent({matches: $scope.actualMatches.matches, idround: $scope.actualRound}),
                                 function (r) {
-                                    refresh(true);
+                                    if (r.ok) {
+                                        $scope.mainError = null;
+                                        refresh(true);
+                                        console.log('ok!')
+                                    } else {
+                                        console.log('erroì')
+                                        $scope.mainError = r.error;
+                                    }
                                 });
                     };
                 } else {

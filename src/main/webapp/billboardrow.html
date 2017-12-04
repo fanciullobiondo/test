@@ -1,10 +1,10 @@
 <div class='billMatchBox'>
-    <div class="row" ng-class="{winner: getBillboardGoal(passed,row, index, true) > getBillboardGoal(passed,row, index, false)}">
+    <div class="row" ng-class="getBillboardGoal(passed,row, index, true) > getBillboardGoal(passed,row, index, false) ? 'winner': 'loser'">
         <div class="six columns"><span>{{passed.matches[row][index].homeTeam}}</span></div>
         <div class="three columns">&nbsp;</div>
         <div class="three columns"><span>{{getBillboardGoal(passed,row, index, true)}}</span></div>
     </div>
-    <div class="row" ng-class="{winner: getBillboardGoal(passed,row, index, true) < getBillboardGoal(passed,row, index, false)}">
+    <div class="row" ng-class="getBillboardGoal(passed,row, index, true) < getBillboardGoal(passed,row, index, false) ?  'winner': 'loser'">
         <div class="six columns"><span>{{passed.matches[row][index].awayTeam}}</span></div>
         <div class="three columns">&nbsp;</div>
         <div class="three columns"><span>{{getBillboardGoal(passed, row, index, false)}}</span></div>

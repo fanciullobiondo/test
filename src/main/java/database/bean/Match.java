@@ -112,6 +112,31 @@ public class Match extends Entity {
         this.idRound = idRound;
     }
 
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Match other = (Match) obj;
+        if (this.idmatch != other.idmatch) {
+            return false;
+        }
+        return true;
+    }
+
+
     public static QueryBuilder<Match> builder = new QueryBuilder<Match>() {
 
         @Override

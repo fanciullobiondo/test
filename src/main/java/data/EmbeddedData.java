@@ -23,20 +23,71 @@ public class EmbeddedData {
     }
 
     static {
-        registerTeam(new Team("camp1", League.campionato(), 2, 4));
-        registerTeam(new Team("camp2", League.campionato(), 2, 4));
-        registerTeam(new Team("camp3", League.campionato(), 2, 4));
-        registerTeam(new Team("camp4", League.campionato(), 2, 4));
-        registerTeam(new Team("camp5", League.campionato(), 2, 4));
-        registerTeam(new Team("camp6", League.campionato(), 2, 4));
-        registerTeam(new Team("camp7", League.campionato(), 2, 4));
-        registerTeam(new Team("camp8", League.campionato(), 2, 4));
-        registerTeam(new Team("camp9", League.campionato(), 2, 4));
+        registerTeam(new Team("Juventus", League.campionato(), 4, 6));
+        registerTeam(new Team("Inter", League.campionato(), 3, 5));
+        registerTeam(new Team("Milan", League.campionato(), 2, 4));
+        registerTeam(new Team("Napoli", League.campionato(), 2, 7));
+        registerTeam(new Team("Roma", League.campionato(), 4, 4));
+        registerTeam(new Team("Lazio", League.campionato(), 3, 6));
+        registerTeam(new Team("Fiorentina", League.campionato(), 2, 4));
+        registerTeam(new Team("Udinese", League.campionato(), 2, 3));
+        registerTeam(new Team("Sampdoria", League.campionato(), 2, 4));
+        registerTeam(new Team("Atalanta", League.campionato(), 4, 5));
+        registerTeam(new Team("Chievo Verona", League.campionato(), 4, 3));
+        registerTeam(new Team("Benevento", League.campionato(), 1, 1));
+        registerTeam(new Team("Crotone", League.campionato(), 1, 2));
+        registerTeam(new Team("Genoa", League.campionato(), 2, 3));
+        registerTeam(new Team("Bologna", League.campionato(), 2, 2));
+        registerTeam(new Team("Torino", League.campionato(), 3, 4));
+        registerTeam(new Team("SPAL", League.campionato(), 1, 1));
+        registerTeam(new Team("Sassuolo", League.campionato(), 2, 2));
+        registerTeam(new Team("Hellas Verona", League.campionato(), 1, 1));
 
-        for (int i = 0; i < 18; i++) {
-            registerTeam(new Team("eurl" + i, League.europaLeague(), 2, 4));
-            registerTeam(new Team("ch" + i, League.championsLeague(), 2, 4));
-        }
+        registerTeam(new Team("Real Madrid", League.championsLeague(), 4, 7));
+        registerTeam(new Team("Barcelona", League.championsLeague(), 4, 7));
+        registerTeam(new Team("Atletico Madrid", League.championsLeague(), 4, 5));
+        registerTeam(new Team("Manchester United", League.championsLeague(), 3, 5));
+        registerTeam(new Team("Chelsea", League.championsLeague(), 3, 6));
+        registerTeam(new Team("Manchester City", League.championsLeague(), 3, 7));
+        registerTeam(new Team("PSG", League.championsLeague(), 3, 6));
+        registerTeam(new Team("Monaco", League.championsLeague(), 2, 6));
+        registerTeam(new Team("Bayern Monaco", League.championsLeague(), 4, 6));
+        registerTeam(new Team("Borussia Dortmund", League.championsLeague(), 3, 5));
+        registerTeam(new Team("Porto", League.championsLeague(), 3, 4));
+        registerTeam(new Team("Benfica", League.championsLeague(), 2, 4));
+        registerTeam(new Team("Zenit", League.championsLeague(), 2, 4));
+        registerTeam(new Team("Ajax", League.championsLeague(), 2, 3));
+        registerTeam(new Team("Lione", League.championsLeague(), 2, 3));
+        registerTeam(new Team("Celtic", League.championsLeague(), 1, 3));
+        registerTeam(new Team("Olympiakos", League.championsLeague(), 2, 2));
+        
+        registerTeam(new Team("Liverpool", League.europaLeague(), 3, 5));
+        registerTeam(new Team("Tottenham", League.europaLeague(), 3, 6));
+        registerTeam(new Team("Arsenal", League.europaLeague(), 3, 5));
+
+        registerTeam(new Team("Villareal", League.europaLeague(), 3, 4));
+        registerTeam(new Team("Siviglia", League.europaLeague(), 3, 4));
+        registerTeam(new Team("Valencia", League.europaLeague(), 2, 6));
+
+        registerTeam(new Team("Nizza", League.europaLeague(), 2, 4));
+        registerTeam(new Team("Lille", League.europaLeague(), 1, 3));
+
+        registerTeam(new Team("Galatasaray", League.europaLeague(), 2, 2));
+        registerTeam(new Team("Fenerbahce", League.europaLeague(), 2, 1));
+
+        registerTeam(new Team("Dnipro", League.europaLeague(), 2, 1));
+        registerTeam(new Team("Bayer Leverkusen", League.europaLeague(), 3, 3));
+        registerTeam(new Team("Schalke 04", League.europaLeague(), 3, 4));
+        
+        registerTeam(new Team("Wolfsburg", League.europaLeague(), 3, 4));
+        registerTeam(new Team("Braga", League.europaLeague(), 2, 2));
+        registerTeam(new Team("Dinamo Kiev", League.europaLeague(), 2, 2));
+        registerTeam(new Team("AEK Atene", League.europaLeague(), 1, 2));
+
+//        for (int i = 0; i < 18; i++) {
+//            registerTeam(new Team("eurl" + i, League.europaLeague(), 2, 4));
+//            registerTeam(new Team("ch" + i, League.championsLeague(), 2, 4));
+//        }
 
         if (ALL_TEAMS.size() < Engine.ALL_N_TEAMS) {
             throw new IllegalArgumentException("le squadre devono essere almeno 34");
@@ -53,6 +104,12 @@ public class EmbeddedData {
         public Team(String name, League league, int defence, int attack) {
             this.name = name;
             this.league = league;
+            if (defence < 1 || defence > 7 || attack < 1 || defence > 7) {
+                throw new IllegalArgumentException("Squadra " + name + " non valida");
+            }
+            if (defence + attack > 11) {
+                throw new IllegalArgumentException("Squadra " + name + " non valida, troppo alti");
+            }
             this.defence = defence;
             this.attack = attack;
         }
@@ -89,7 +146,7 @@ public class EmbeddedData {
         public static String getRelativeNameOfRound(int idleague, int index) {
             switch (idleague) {
                 case CAMPIONATO:
-                    return "Giornata " + (index+1);
+                    return "Giornata " + (index + 1);
                 case COPPA:
                     switch (index) {
                         case 0:
@@ -111,7 +168,7 @@ public class EmbeddedData {
                         case 3:
                             return "Finale";
                     }
-                    
+
             }
             return "?";
         }

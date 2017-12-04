@@ -26,6 +26,7 @@ public class FileUtils {
             paths
                 .filter(Files::isRegularFile)
                 .filter(f ->  !f.toFile().getName().equals("null"))
+                .sorted()
                 .forEach(f -> list.add(f.toFile().getName()));
         }
         System.out.println("return " + list);
