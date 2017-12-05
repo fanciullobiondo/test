@@ -137,8 +137,6 @@ public class Engine {
 
         List<Match> allMatchToSimulate = manager.getAllMatchToSimulate(idround);
         if (theRound.getLeague() != CAMPIONATO) {
-            System.out.println("passed= " + passed);
-            System.out.println("all" + allMatchToSimulate) ;
             boolean anyMatch = passed.stream().anyMatch(m -> m.getGoalAway() == m.getGoalHome() && !allMatchToSimulate.contains(m));
             if (anyMatch) {
                 throw new BadRequestException("Non puoi inserire pareggi.");
@@ -313,7 +311,6 @@ public class Engine {
         if (choosen.size() != ALL_N_TEAMS) {
             throw new IllegalStateException("le squadre inserite sono " + choosen.size() + " ma devono essere " + ALL_N_TEAMS);
         }
-        System.out.println("alla fine squadre scelte " + choosen);
 
     }
 
@@ -484,8 +481,7 @@ public class Engine {
 
     public int getPositionForTeams(int idteam, int idseason) throws SQLException {
         return getPositionsOfSeason(idseason, true)
-            .get(manager
-                .findTeamById(idteam));
+            .get(manager.findTeamById(idteam));
     }
 
     // squdra, pos
@@ -529,7 +525,6 @@ public class Engine {
     }
 
     public int calculateMoneyForTeamLeagueTable(int idteam, LeagueTable table) throws SQLException {
-
         if (table.getLeague() == CAMPIONATO) {
             return getPositionForTeams(idteam, table.getIdseason()) * 5;
         }

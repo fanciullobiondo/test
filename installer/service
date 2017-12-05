@@ -1,0 +1,53 @@
+#!/bin/bash
+TOMCAT_DIR=$HOME/tomcat
+TOMCAT_HOME=apache-tomcat-8.5.24
+WAR_NAME="game.war"
+
+###
+### Service commands
+###
+
+install_tomcat() {
+  echo "Installing tomcat to $TOMCAT_DIR"
+  if [ ! -d "$TOMCAT_DIR" ]; then
+    echo "Tomcat is not installed."
+    mkdir -p $TOMCAT_DIR
+    wget -qO- http://mirror.nohup.it/apache/tomcat/tomcat-8/v8.5.24/bin/apache-tomcat-8.5.24.tar.gz | tar xvz -C  $TOMCAT_DIR/
+  fi
+  
+  cp -rf conf/server.xml $TOMCAT_DIR/$TOMCAT_HOME/conf/server.xml
+  mkdir -p $TOMCAT_DIR/$TOMCAT_HOME/conf/Catalina/localhost/
+  cp -rf conf/ROOT.xml $TOMCAT_DIR/$TOMCAT_HOME/conf/Catalina/localhost/
+}
+
+start() {
+  echo "Starting service..."
+  install_tomcat
+  cp lib/$WAR_NAME $TOMCAT_DIR/$TOMCAT_HOME/webapps/
+  mkdir -p databases
+  echo "game.path=$(pwd)" >> $TOMCAT_DIR/$TOMCAT_HOME/conf/catalina.properties
+  $TOMCAT_DIR/$TOMCAT_HOME/bin/startup.sh
+  exit 0
+}
+
+kill() {
+  echo "Killing service..."
+  $TOMCAT_DIR/$TOMCAT_HOME/bin/shutdown.sh
+  exit 0
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+
+  kill)
+    kill
+    ;;
+
+  *)
+    echo $"Usage: $0 {start|kill}"
+    RETVAL=1
+esac
+
+exit $RETVAL

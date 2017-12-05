@@ -1,0 +1,24 @@
+#!/bin/bash
+WAR_NAME="game.war"
+DIR_NAME="game"
+echo "Installing game to $1"
+if [ ! -d "$1" ]; then
+ echo "$1 not exists!"
+ exit 1
+fi
+PREV_PATH=$(pwd)
+mvn clean install
+cd $1
+rm -rf $DIR_NAME
+mkdir -p $DIR_NAME/lib
+mkdir -p $DIR_NAME/conf
+cp $PREV_PATH/target/$WAR_NAME $DIR_NAME/lib/
+cp $PREV_PATH/installer/service $DIR_NAME
+cp $PREV_PATH/installer/tomcatconf/* $DIR_NAME/conf/
+cd $DIR_NAME
+./service start
+exit 0
+
+
+
+

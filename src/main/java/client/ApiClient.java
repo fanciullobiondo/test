@@ -8,6 +8,7 @@ import data.LeagueTable;
 import database.bean.Match;
 import engine.Engine;
 import java.io.IOException;
+import static java.nio.file.Paths.get;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -29,7 +30,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.QueryParam;
-import tomcat.TomcatManager;
+import org.apache.log4j.Logger;
+import static tomcat.Initializer.ATTRIBUTE_ENGINE;
 import utils.FileUtils;
 
 @Path("api")
@@ -44,7 +46,11 @@ public class ApiClient {
 
     private Map<Integer, LeagueTable> leagueCache = new HashMap<>();
 
-    private Map<Integer, BillboardTable> billboardCache = new HashMap<>();
+    private Map<Integer, BillboardTable> coppaBillBoardCache = new HashMap<>();
+    private Map<Integer, BillboardTable> euroBillBoardCache = new HashMap<>();
+    private Map<Integer, BillboardTable> championsBillBoardCache = new HashMap<>();
+
+    private final static Logger logger = Logger.getLogger(ApiClient.class);
 
     private LeagueTable getLeagueTable(int idround) throws SQLException {
         LeagueTable get = leagueCache.get(idround);
@@ -57,17 +63,25 @@ public class ApiClient {
     }
 
     private BillboardTable getBillboardTable(int idround, int idleague, int subleague) throws SQLException {
-        BillboardTable get = billboardCache.get(idround);
-//        if (get == null) {
-        get = getManager().calculateBillboard(idround, idleague, subleague);
-//            billboardCache.put(idround, get);
-//        }
+        Map<Integer, BillboardTable> cache = coppaBillBoardCache;
+        if (idleague == League.EUROPA) {
+            if (subleague == League.SUB_EUROPALEAGUE) {
+                cache = euroBillBoardCache;
+            } else if (subleague == League.SUB_CHAMPIONSLEAGUE) {
+                cache = championsBillBoardCache;
+            }
+        }
+        BillboardTable get = cache.get(idround);
+        if (get == null) {
+            get = getManager().calculateBillboard(idround, idleague, subleague);
+            cache.put(idround, get);
+        }
         return get;
 
     }
 
     private Engine getManager() {
-        return (Engine) servletRequest.getServletContext().getAttribute(TomcatManager.ATTRIBUTE_ENGINE);
+        return (Engine) servletRequest.getServletContext().getAttribute(ATTRIBUTE_ENGINE);
     }
 
     @GET
@@ -80,39 +94,47 @@ public class ApiClient {
 
     @GET
     @Path("/actual")
-    public Map<String, Object> actual() throws SQLException, NamingException, IOException {
+    public Map<String, Object> actual() {
         try {
-            int idround = getManager().getActualRound();
-            if (idround <= 0) {
+            try {
+                int idround = getManager().getActualRound();
+                if (idround <= 0) {
+                    return simpleResult(FileUtils.readExistingDatabases(getManager().getDatabasesPath()));
+                }
+                return simpleResult(getManager().getRoundInfo(idround));
+            } catch (SQLException e) {
                 return simpleResult(FileUtils.readExistingDatabases(getManager().getDatabasesPath()));
             }
-            return simpleResult(getManager().getRoundInfo(idround));
-        } catch (SQLException e) {
-            return simpleResult(FileUtils.readExistingDatabases(getManager().getDatabasesPath()));
+        } catch (IOException e) {
+            return internalError(e);
         }
     }
 
     @GET
     @Path("/round")
-    public Map<String, Object> getRoundInfo(@QueryParam("idround") int idround) throws SQLException, NamingException {
-        List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
-        if (roundMatches == null) {
-            // round non esiste
-            return error("round non esiste");
-        }
-        Collections.sort(roundMatches, (o1, o2) -> {
-            return o1.isCl() ? 1 : -1;
-        });
+    public Map<String, Object> getRoundInfo(@QueryParam("idround") int idround) {
+        try {
 
-        BillboardTable bill = getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
-        Map<String, Object> simpleResult = simpleResult(roundMatches);
-        simpleResult.put("played", getManager().isRoundPlayed(idround));
-        simpleResult.put("table", getLeagueTable(idround));
-        simpleResult.put("billboardCh", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE));
-        simpleResult.put("billboardEl", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE));
-        simpleResult.put("billboardCo", getBillboardTable(idround, EmbeddedData.League.COPPA, EmbeddedData.League.SUB_NONE));
-        simpleResult.put("round", getManager().getRoundInfo(idround));
-        return simpleResult;
+            List<RoundMatch> roundMatches = getManager().getRoundMatches(idround);
+            if (roundMatches == null) {
+                // round non esiste
+                return error("round non esiste");
+            }
+            Collections.sort(roundMatches, (o1, o2) -> {
+                return o1.isCl() ? 1 : -1;
+            });
+
+            Map<String, Object> simpleResult = simpleResult(roundMatches);
+            simpleResult.put("played", getManager().isRoundPlayed(idround));
+            simpleResult.put("table", getLeagueTable(idround));
+            simpleResult.put("billboardCh", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE));
+            simpleResult.put("billboardEl", getBillboardTable(idround, EmbeddedData.League.EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE));
+            simpleResult.put("billboardCo", getBillboardTable(idround, EmbeddedData.League.COPPA, EmbeddedData.League.SUB_NONE));
+            simpleResult.put("round", getManager().getRoundInfo(idround));
+            return simpleResult;
+        } catch (SQLException e) {
+            return internalError(e);
+        }
     }
 
     @POST
@@ -120,12 +142,17 @@ public class ApiClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
     public Map<String, Object> postdbchooser(Map<String, Object> content) throws SQLException, NamingException {
-        String selected = (String) content.get("selected");
-        if (selected.equals("0")) {
-            SimpleDateFormat smf = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss");
-            selected = "game_" + smf.format(new Timestamp(System.currentTimeMillis())) + ".db";
+        try {
+
+            String selected = (String) content.get("selected");
+            if (selected.equals("0")) {
+                SimpleDateFormat smf = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss");
+                selected = "game_" + smf.format(new Timestamp(System.currentTimeMillis())) + ".db";
+            }
+            return simpleResult(getManager().startDatabase(selected));
+        } catch (SQLException e) {
+            return internalError(e);
         }
-        return simpleResult(getManager().startDatabase(selected));
     }
 
     @POST
@@ -133,20 +160,24 @@ public class ApiClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
     public Map<String, Object> postteamchooser(Map<String, Object> content) throws SQLException, NamingException {
+        try {
 
-        List<String> selected = (List<String>) content.get("selected");
+            List<String> selected = (List<String>) content.get("selected");
 
-        if (selected.size() > 8 || selected.size() < 1) {
-            return error("i giocatori devono essere da 1 a 8");
+            if (selected.size() > 8 || selected.size() < 1) {
+                return error("i giocatori devono essere da 1 a 8");
+            }
+            Set<String> set = new HashSet<>(selected);
+            if (selected.size() != set.size()) {
+                return error("Una squadra è stata scelta piu volte");
+            }
+
+            getManager().insertTeams(selected);
+            int nextRound = getManager().getActualRound();
+            return simpleResult(nextRound);
+        } catch (Exception e) {
+            return internalError(e);
         }
-        Set<String> set = new HashSet<>(selected);
-        if (selected.size() != set.size()) {
-            return error("Una squadra è stata scelta piu volte");
-        }
-
-        getManager().insertTeams(selected);
-        int nextRound = getManager().getActualRound();
-        return simpleResult(nextRound);
     }
 
     @POST
@@ -154,33 +185,35 @@ public class ApiClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @SuppressWarnings("unchecked")
     public Map<String, Object> postround(Map<String, Object> content) throws SQLException, NamingException {
-        List<?> matches = (List<?>) content.get("matches");
-        Integer idround = (Integer) content.get("idround");
-
         try {
-            getManager().playRound(idround, matches.stream().map(rm -> new Match(RoundMatch.wrap((Map) rm))).collect(Collectors.toList()));
-        } catch (BadRequestException e) {
-            return error(e.getMessage());
-        }
 
-        return simpleResult();
+            List<?> matches = (List<?>) content.get("matches");
+            Integer idround = (Integer) content.get("idround");
+
+            try {
+                getManager().playRound(idround, matches.stream().map(rm -> new Match(RoundMatch.wrap((Map) rm))).collect(Collectors.toList()));
+            } catch (BadRequestException e) {
+                return error(e.getMessage());
+            }
+
+            return simpleResult();
+        } catch (Exception e) {
+            return internalError(e);
+        }
     }
 
     @GET
     @Path("/teamchooser")
     public Map<String, Object> teamchooser() throws SQLException, NamingException {
-        return simpleResult(EmbeddedData.ALL_TEAMS.values()
-            .stream()
-            .filter(t -> t.getLeague().getId() == CAMPIONATO)
-            .map(t -> t.getName())
-            .collect(Collectors.toList()));
-    }
-
-    @POST
-    @Path("/newgame")
-    public Map<String, Object> newgame() throws SQLException, NamingException {
-        Map<String, Object> a = new HashMap<>();
-        return a;
+        try {
+            return simpleResult(EmbeddedData.ALL_TEAMS.values()
+                .stream()
+                .filter(t -> t.getLeague().getId() == CAMPIONATO)
+                .map(t -> t.getName())
+                .collect(Collectors.toList()));
+        } catch (Exception e) {
+            return internalError(e);
+        }
     }
 
     private static Map<String, Object> simpleResult(Object obj) {
@@ -193,6 +226,15 @@ public class ApiClient {
     private static Map<String, Object> simpleResult() {
         Map<String, Object> res = new HashMap<>();
         res.put("ok", true);
+        return res;
+    }
+
+    private static Map<String, Object> internalError(Object e) {
+        logger.info("ERROR:" + e.toString());
+        logger.info(e);
+        Map<String, Object> res = new HashMap<>();
+        res.put("ok", false);
+        res.put("error", "Internal error" + e.toString());
         return res;
     }
 

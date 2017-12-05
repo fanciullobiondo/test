@@ -30,6 +30,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.log4j.Logger;
+import tomcat.Initializer;
 
 /**
  *
@@ -39,6 +41,7 @@ public class DatabaseManager {
 
     private final String databasePath;
     private String databaseName;
+    private final static Logger logger = Logger.getLogger(DatabaseManager.class);
 
     public DatabaseManager(String databasePath) {
         this.databasePath = databasePath;
@@ -472,12 +475,11 @@ public class DatabaseManager {
     public boolean initDatabase(String dbname) throws SQLException {
         databaseName = dbname;
         File file = new File(databasePath + databaseName);
-        System.out.println("initDatabase at" + file.getAbsolutePath());
+        logger.info("initDatabase at" + file.getAbsolutePath());
 
         if (file.exists()) {
-            System.out.print("Database already exists!");
+            logger.info("Database already exists!");
             return true;
-//            file.delete();
         }
 
         try (Connection c = openConnection();) {
@@ -494,7 +496,7 @@ public class DatabaseManager {
             c.commit();
             c.setAutoCommit(true);
         }
-        System.out.println("OK!");
+        logger.info("Database OK");
         return false;
 
     }

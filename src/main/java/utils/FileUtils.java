@@ -29,7 +29,6 @@ public class FileUtils {
                 .sorted()
                 .forEach(f -> list.add(f.toFile().getName()));
         }
-        System.out.println("return " + list);
         return list;
 
     }

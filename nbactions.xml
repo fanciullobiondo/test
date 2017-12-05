@@ -14,4 +14,11 @@
                 <goal>exec:java</goal>
             </goals>
         </action>
+        <action>
+            <actionName>CUSTOM-tree</actionName>
+            <displayName>tree</displayName>
+            <goals>
+                <goal>dependency:tree</goal>
+            </goals>
+        </action>
     </actions>
