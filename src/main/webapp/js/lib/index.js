@@ -28,7 +28,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 $scope.situation = 'main';
                 $scope.actualRound = r.simple.idround;
                 $scope.round = r.simple;
-//                angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
+                angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
             } else {
                 $scope.situation = 'start';
                 $scope.databases = r.simple || $scope.databases;
@@ -88,7 +88,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 $scope.billboardCl = r.billboardCh;
                 $scope.billboardEl = r.billboardEl;
                 $scope.billboardCo = r.billboardCo;
-
+                
                 if (!r.played) {
                     $scope.navLabel = "Salva risultati";
                     $scope.navLabelClick = function () {
