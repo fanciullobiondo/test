@@ -28,7 +28,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 $scope.situation = 'main';
                 $scope.actualRound = r.simple.idround;
                 $scope.round = r.simple;
-                angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
+//                angular.element(window.document).find('.tab-' + r.simple.league.replace(" ", "-")).click();
             } else {
                 $scope.situation = 'start';
                 $scope.databases = r.simple || $scope.databases;
@@ -116,9 +116,6 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
 
     }
 
-    $scope.getBillboardGoal = function (cal, r, index, home) {
-        return cal && cal.playedRounds > r ? (home ? cal.matches[r][index].goalHome : cal.matches[r][index].goalAway) : '-';
-    };
     $scope.getNumber = function (num) {
         return new Array(num);
     };
@@ -159,7 +156,19 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
             }});
     }
 
+}).directive('billboardrow', function () {
+    return {
+        restrict: 'E',
+        scope: {
+            passed: '=',
+            row: '=',
+            index: '='
+        },
+        templateUrl: 'billboardrow.html'
+     
+    };
 });
+;
 
 
 
