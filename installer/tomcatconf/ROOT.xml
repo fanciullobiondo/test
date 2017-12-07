@@ -1,5 +1,0 @@
-<Context
-	docBase="/home/diennea.lan/nicolo.boschi/dev/webapptomcatembedded/target/game" 
-  path="/mygame" 
-  reloadable="true" 
-/>

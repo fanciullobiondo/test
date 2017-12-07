@@ -60,7 +60,19 @@
                     </div>
                     <div class="one columns">&nbsp;</div>
                     <div class="five columns">
-                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showPrev();"><</button>&nbsp;<button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showNext()">></button>&nbsp;<button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;navLabelClick()">{{navLabel}}</button>
+                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showPrev();">
+                            <
+                        </button>
+                        &nbsp;
+                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;showNext()">
+                            >
+                        </button>&nbsp;
+                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;navLabelClick()">
+                            {{navLabel}}
+                        </button>
+                        <button ng-disabled="buttonDisabled" ng-click="buttonDisabled = true;requestReset()">
+                            X
+                        </button>
                     </div>
                 </div>
 
@@ -101,7 +113,7 @@
                 <div ng-show="situation === 'main'"  id="main"  >
                     <label ng-show="mainError !== ''" class="error">{{mainError}}</label>
                     <form> 
-                        <div class="container">
+                        <div class="container" >
                             <div class="row matches_{{m.idmatch}} "  ng-repeat="m in actualMatches.matches">
 
                                 <div class="one columns"><span style="text-align: left">{{actualMatches.played ? m.home.money + '$': ''}}</span></div>

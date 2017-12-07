@@ -5,10 +5,10 @@ import data.EmbeddedData;
 import data.EmbeddedData.League;
 import static data.EmbeddedData.League.CAMPIONATO;
 import data.LeagueTable;
+import database.DatabaseManager;
 import database.bean.Match;
 import engine.Engine;
 import java.io.IOException;
-import static java.nio.file.Paths.get;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,6 +94,18 @@ public class ApiClient {
     }
 
     @GET
+    @Path("/requestreset")
+    public Map<String, Object> requestreset() throws SQLException, NamingException {
+        try {
+            servletRequest.getServletContext().setAttribute(ATTRIBUTE_ENGINE, new Engine(new DatabaseManager(DatabaseManager.getDefaultDatabasePath())));
+            return simpleResult();
+        } catch (Exception e) {
+            return internalError(e);
+        }
+
+    }
+
+    @GET
     @Path("/actual")
     public Map<String, Object> actual() {
         try {
@@ -146,8 +159,8 @@ public class ApiClient {
 
             String selected = (String) content.get("selected");
             if (selected.equals("0")) {
-                SimpleDateFormat smf = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss");
-                selected = "game_" + smf.format(new Timestamp(System.currentTimeMillis())) + ".db";
+                SimpleDateFormat smf = new SimpleDateFormat("dd-MMMM__HH-mm-ss", Locale.ITALY);
+                selected = "Gioco__" + smf.format(new Timestamp(System.currentTimeMillis())) + ".db";
             }
             return simpleResult(getManager().startDatabase(selected));
         } catch (SQLException e) {

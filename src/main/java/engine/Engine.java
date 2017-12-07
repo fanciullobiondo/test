@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import static data.EmbeddedData.League.EUROPA;
+import org.apache.log4j.Logger;
 
 /**
  *
@@ -47,6 +48,7 @@ public class Engine {
     public static final int EUROPA_CHAMPIONS_CPU_TEAMS = 13;
     public static final int ALL_N_TEAMS = 40;
     public static final int ALL_CPU_TEAMS = 33;
+    private final static Logger logger = Logger.getLogger(Engine.class);
 
     public static final LinkedList<Integer> MATCHES_PATTERN = new LinkedList<>(Arrays.asList(CAMPIONATO,
         EUROPA,
@@ -67,10 +69,10 @@ public class Engine {
     public Engine() {
     }
 
-
     public String getDatabasesPath() {
         return manager.getDatabasePath();
     }
+
     public Engine(DatabaseManager manager) throws SQLException {
         this.manager = manager;
     }
@@ -143,9 +145,6 @@ public class Engine {
             }
         }
 
-
-        
-
         for (Match simulated : allMatchToSimulate) {
             MatchResult rs = simulateMatch(manager.findTeamById(simulated.getIdTeamHome()),
                 manager.findTeamById(simulated.getIdTeamAway()), theRound.getLeague() == CAMPIONATO);
@@ -203,7 +202,7 @@ public class Engine {
 
     public int getActualRound() throws SQLException {
         int actualRound = manager.getActualRound();
-        if (actualRound == -1 && !manager.queryEntity(Team.class, null).isEmpty()) {
+        if (actualRound == -1 && manager.isTeamsInserted()) {
             return newSeason();
         }
         return actualRound;
@@ -221,14 +220,15 @@ public class Engine {
         if (rou.getLeague() == CAMPIONATO) {
             league = calculateLeagueTable(idround - 1);
         }
-        
+
         for (Match matche : getMatches) {
             ApiClient.RoundMatch roundMatch = new ApiClient.RoundMatch();
             roundMatch.setIdmatch(matche.getIdmatch());
-            Team teamHome = manager.queryEntity(Team.class, WhereClause.instance().field("idteam", "="), matche.getIdTeamHome()).get(0);
+            Team teamHome = manager.findTeamById(matche.getIdTeamHome());
             roundMatch.setHome(new ApiClient.RoundMatch.TeamResult(teamHome.getIdteam(),
                 teamHome.getName(), matche.getGoalHome(), teamHome.isOfuser()));
-            Team teamAway = manager.queryEntity(Team.class, WhereClause.instance().field("idteam", "="), matche.getIdTeamAway()).get(0);
+
+            Team teamAway = manager.findTeamById(matche.getIdTeamAway());
             roundMatch.setAway(new ApiClient.RoundMatch.TeamResult(teamAway.getIdteam(),
                 teamAway.getName(), matche.getGoalAway(), teamAway.isOfuser()));
             roundMatch.setEditable(teamHome.isOfuser() || teamAway.isOfuser());
@@ -236,6 +236,7 @@ public class Engine {
                 roundMatch.setMoneyHome(calculateMoneyForTeamLeagueTable(teamAway.getIdteam(), league));
                 roundMatch.setMoneyAway(calculateMoneyForTeamLeagueTable(teamHome.getIdteam(), league));
             } else {
+                // coppa, ch, eu, primo turno camp
                 roundMatch.setMoneyHome(40);
                 roundMatch.setMoneyAway(40);
             }
@@ -390,6 +391,7 @@ public class Engine {
     }
 
     public int newSeason() throws SQLException {
+        long startts = System.currentTimeMillis();
         List<Team> teams = manager.queryEntity(Team.class, null);
         if (teams.size() != ALL_N_TEAMS) {
             throw new IllegalStateException("Non posso iniziare una stagione con " + teams.size() + " squadre");
@@ -401,19 +403,19 @@ public class Engine {
 
         Map<Integer, List<Team>> allTeamsByLeague = new HashMap<>();
 
-        List<Team> campionatoTeams = manager.queryEntity(Team.class, WhereClause.instance().field("league", "="), CAMPIONATO);
+        List<Team> campionatoTeams = teams.stream().filter(t -> t.getLeague() == CAMPIONATO).collect(Collectors.toList());
         allTeamsByLeague.put(EmbeddedData.League.CAMPIONATO, campionatoTeams);
         allTeamsByLeague.put(EmbeddedData.League.COPPA, campionatoTeams);
 
         if (first) {
-            List<Team> eulTeams = manager.queryEntity(Team.class,
-                WhereClause.instance()
-                    .field("league", "="), EUROPA);
+            List<Team> eulTeams = teams.stream().filter(t -> t.getLeague() == EUROPA).collect(Collectors.toList());
 
             allTeamsByLeague.put(EmbeddedData.League.EUROPA, eulTeams);
         } else {
             List<Team> cpuTeams = manager.getTeamsForLeague(EUROPA_LEAGUE_CPU_TEAMS, EUROPA, EmbeddedData.League.SUB_EUROPALEAGUE);
-            List<Team> eut = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_EUROPALEAGUE);
+
+            LeagueTable leagueTable = manager.calculateLeagueTable(idSeason - 1, CAMPIONATO);
+            List<Team> eut = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_EUROPALEAGUE, leagueTable);
             for (Team team : eut) {
                 team.setLeague(EUROPA);
                 team.setSubleague(EmbeddedData.League.SUB_EUROPALEAGUE);
@@ -421,7 +423,7 @@ public class Engine {
             cpuTeams.addAll(eut);
 
             cpuTeams.addAll(manager.getTeamsForLeague(EUROPA_CHAMPIONS_CPU_TEAMS, EUROPA, EmbeddedData.League.SUB_CHAMPIONSLEAGUE));
-            List<Team> t = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
+            List<Team> t = getQualifiedForLeague(idSeason - 1, EmbeddedData.League.SUB_CHAMPIONSLEAGUE, leagueTable);
             for (Team team : t) {
                 team.setLeague(EUROPA);
                 team.setSubleague(EmbeddedData.League.SUB_CHAMPIONSLEAGUE);
@@ -445,7 +447,6 @@ public class Engine {
             }
             leagueRounds.get(league).add(key);
         }
-
 
         Map<Integer, List<SeasonCalculator.SingleMatch>> sortedRound = new LinkedHashMap<>();
         for (Integer idleague : MATCHES_PATTERN) {
@@ -475,19 +476,21 @@ public class Engine {
                 manager.insertEntity(match);
             }
         }
-
+        logger.debug("new season calculated in " + (System.currentTimeMillis() - startts) + " ms");
         return nextRound;
     }
 
-    public int getPositionForTeams(int idteam, int idseason) throws SQLException {
-        return getPositionsOfSeason(idseason, true)
+    private int getPositionForTeams(int idteam, int idseason, LeagueTable table) throws SQLException {
+        return getPositionsOfSeason(idseason, true, table)
             .get(manager.findTeamById(idteam));
     }
 
     // squdra, pos
-    private Map<Team, Integer> getPositionsOfSeason(int idseason, boolean reverse) throws SQLException {
+    private Map<Team, Integer> getPositionsOfSeason(int idseason, boolean reverse, LeagueTable table) throws SQLException {
         Map<Team, Integer> positions = new HashMap<>();
-        LeagueTable table = manager.calculateLeagueTable(idseason, CAMPIONATO);
+        if (table == null) {
+            table = manager.calculateLeagueTable(idseason, CAMPIONATO);
+        }
         Collections.sort(table.getRows(), LeagueTable.compare);
         if (reverse) {
             Collections.reverse(table.getRows());
@@ -508,9 +511,9 @@ public class Engine {
 
     }
 
-    private List<Team> getQualifiedForLeague(int idseason, int league) throws SQLException {
+    private List<Team> getQualifiedForLeague(int idseason, int league, LeagueTable table) throws SQLException {
         List<Team> res = new ArrayList<>();
-        Map<Team, Integer> ps = getPositionsOfSeason(idseason, false);
+        Map<Team, Integer> ps = getPositionsOfSeason(idseason, false, table);
         if (league == EmbeddedData.League.SUB_CHAMPIONSLEAGUE) {
             res.add(getTeamAtPosition(ps, 0));
             res.add(getTeamAtPosition(ps, 1));
@@ -524,9 +527,9 @@ public class Engine {
         return res;
     }
 
-    public int calculateMoneyForTeamLeagueTable(int idteam, LeagueTable table) throws SQLException {
+    private int calculateMoneyForTeamLeagueTable(int idteam, LeagueTable table) throws SQLException {
         if (table.getLeague() == CAMPIONATO) {
-            return getPositionForTeams(idteam, table.getIdseason()) * 5;
+            return getPositionForTeams(idteam, table.getIdseason(), table) * 5;
         }
         return -8;
 

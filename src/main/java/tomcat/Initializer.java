@@ -18,17 +18,15 @@ public class Initializer implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         logger.info("contextInitialized");
-        String databasePath = System.getProperty("game.path") + "/databases/";
+        String databasePath = DatabaseManager.getDefaultDatabasePath();
         logger.info("databasePath = " + databasePath);
 
         DatabaseManager manager = new DatabaseManager(databasePath);
 
-        engine.Engine engine;
         try {
-            engine = new Engine(manager);
-            sce.getServletContext().setAttribute(ATTRIBUTE_ENGINE, engine);
+            sce.getServletContext().setAttribute(ATTRIBUTE_ENGINE, new Engine(manager));
         } catch (SQLException ex) {
-            logger.error("init");
+            logger.error("init err" + ex);
         }
 
     }

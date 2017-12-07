@@ -27,11 +27,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.log4j.Logger;
-import tomcat.Initializer;
+import org.apache.log4j.Priority;
 
 /**
  *
@@ -42,6 +44,11 @@ public class DatabaseManager {
     private final String databasePath;
     private String databaseName;
     private final static Logger logger = Logger.getLogger(DatabaseManager.class);
+    private final Map<Integer, Team> teams = new HashMap<>();
+
+    public static String getDefaultDatabasePath() {
+        return System.getProperty("game.path") + "/databases/";
+    }
 
     public DatabaseManager(String databasePath) {
         this.databasePath = databasePath;
@@ -75,19 +82,37 @@ public class DatabaseManager {
     }
 
     public Team findTeamById(int id) throws SQLException {
+        Team t = teams.get(id);
+        if (t != null) {
+            return t;
+        }
         try (Connection con = openConnection();) {
             try (PreparedStatement psMatch = con
                 .prepareStatement("Select  " + Team.builder.SELECT_HEADER() + " from " + Team.builder.TABLE() + " where idteam=?")) {
                 psMatch.setInt(1, id);
                 try (ResultSet rs = psMatch.executeQuery();) {
                     if (rs.next()) {
-                        return new Team().fromResultSet(rs);
+                        Team team = new Team().fromResultSet(rs);
+                        teams.put(id, team);
+                        return team;
                     }
                 }
 
             }
         }
         return null;
+    }
+
+    public boolean isTeamsInserted() throws SQLException {
+        try (Connection con = openConnection();) {
+            try (PreparedStatement psMatch = con
+                .prepareStatement("Select   1 from " + Team.builder.TABLE() + " LIMIT 1")) {
+                try (ResultSet rs = psMatch.executeQuery();) {
+                    return rs.next();
+                }
+
+            }
+        }
     }
 
     public List<Match> getAllMatchToSimulate(int idround) throws SQLException {
@@ -208,6 +233,8 @@ public class DatabaseManager {
     }
 
     public BillboardTable calculateBillboard(int idseason, int idleague, int subleague) throws SQLException {
+        long startts = System.currentTimeMillis();
+
         if (idleague == EmbeddedData.League.CAMPIONATO) {
             throw new IllegalArgumentException();
         }
@@ -277,11 +304,13 @@ public class DatabaseManager {
             table.getMatches().put(getRelativeRoundIndex(r.getIdRound()), billMatches);
 
         }
+        logger.debug("Billboard s" + idseason + " l" + idleague + " sub" + subleague + " in " + (System.currentTimeMillis() - startts) + " ms");
         return table;
 
     }
 
     public LeagueTable calculateLeagueTable(int idseason, int idleague) throws SQLException {
+        long startts = System.currentTimeMillis();
         if (idleague != EmbeddedData.League.CAMPIONATO) {
             throw new IllegalArgumentException();
         }
@@ -371,6 +400,7 @@ public class DatabaseManager {
             throw new SQLException(e);
         }
         Collections.sort(table.getRows(), LeagueTable.compare);
+        logger.debug("Table s" + idseason + " in " + (System.currentTimeMillis() - startts) + " ms");
 
         return table;
 
@@ -475,12 +505,14 @@ public class DatabaseManager {
     public boolean initDatabase(String dbname) throws SQLException {
         databaseName = dbname;
         File file = new File(databasePath + databaseName);
-        logger.info("initDatabase at" + file.getAbsolutePath());
+        logger.debug("initDatabase at" + file.getAbsolutePath());
 
         if (file.exists()) {
-            logger.info("Database already exists!");
+            logger.debug("Database already exists!");
             return true;
         }
+
+        long _start = System.currentTimeMillis();
 
         try (Connection c = openConnection();) {
 
@@ -496,7 +528,7 @@ public class DatabaseManager {
             c.commit();
             c.setAutoCommit(true);
         }
-        logger.info("Database OK");
+        logger.debug("Database OK, in " + (System.currentTimeMillis() - _start) + " ms");
         return false;
 
     }

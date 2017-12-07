@@ -10,6 +10,12 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
     $scope.round;
     $scope.buttonDisabled = false;
 
+    $scope.requestReset = function () {
+        get('requestreset', function (r) {
+            $scope.situation = 'main';
+            refresh();
+        });
+    };
     $scope.showNext = function () {
         refresh();
     };
@@ -88,7 +94,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
                 $scope.billboardCl = r.billboardCh;
                 $scope.billboardEl = r.billboardEl;
                 $scope.billboardCo = r.billboardCo;
-                
+
                 if (!r.played) {
                     $scope.navLabel = "Salva risultati";
                     $scope.navLabelClick = function () {
@@ -165,7 +171,7 @@ angular.module('app', []).controller('MainCtrl', function ($scope, $document) {
             index: '='
         },
         templateUrl: 'billboardrow.html'
-     
+
     };
 });
 ;
